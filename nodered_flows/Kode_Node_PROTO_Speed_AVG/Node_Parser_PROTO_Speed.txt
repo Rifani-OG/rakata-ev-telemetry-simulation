@@ -1,0 +1,188 @@
+// ============================================================
+// 0. INISIALISASI STATE
+// ============================================================
+if (flow.get("isRunning") === undefined) flow.set("isRunning", false);
+if (flow.get("lapStartTime") === undefined) flow.set("lapStartTime", 0);
+if (flow.get("lastLapTime") === undefined) flow.set("lastLapTime", "--:--.---");
+if (flow.get("lapCounter") === undefined) flow.set("lapCounter", 0);
+if (flow.get("carryOver") === undefined) flow.set("carryOver", 0);
+if (flow.get("targetTime") === undefined) flow.set("targetTime", 200);
+
+let lapMsg = null;
+
+// ============================================================
+// 1. TANGANI TOMBOL UI (START/LAP/RESET)
+// ============================================================
+if (msg.payload === "START_SESSION" || msg.payload === "RECORD_LAP" || msg.payload === "RESET_ALL") {
+    if (msg.payload === "START_SESSION") {
+        flow.set("isRunning", true);
+        let now = Date.now();
+        flow.set("lapStartTime", now);
+        flow.set("lastLapTime", "--:--.---");
+        flow.set("lapCounter", 0);
+        flow.set("carryOver", 0);
+        lapMsg = { payload: { cmd: "START", lapStartTime: now, lastLapTime: "--:--.---", carryOver: 0 } };
+    }
+    else if (msg.payload === "RECORD_LAP") {
+        if (flow.get("isRunning")) {
+            let now = Date.now();
+            let startTime = flow.get("lapStartTime") || now;
+            let elapsed = (now - startTime) / 1000;
+            let m = Math.floor(elapsed / 60);
+            let s = Math.floor(elapsed % 60);
+            let ms = Math.floor((elapsed % 1) * 1000);
+            let lapStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+            
+            let targetTime = flow.get("targetTime") || 200;
+            let carryOver = flow.get("carryOver") || 0;
+            let remaining = targetTime - elapsed;
+            carryOver += remaining;
+            if (carryOver < 1 - targetTime) carryOver = 1 - targetTime;
+            flow.set("carryOver", carryOver);
+            
+            flow.set("lastLapTime", lapStr);
+            flow.set("lapCounter", (flow.get("lapCounter") || 0) + 1);
+            flow.set("lapStartTime", now);
+            lapMsg = { payload: { cmd: "LAP", lapStartTime: now, lastLapTime: lapStr, carryOver: carryOver } };
+        }
+    }
+    else if (msg.payload === "RESET_ALL") {
+        flow.set("isRunning", false);
+        flow.set("lapStartTime", 0);
+        flow.set("lastLapTime", "--:--.---");
+        flow.set("lapCounter", 0);
+        flow.set("carryOver", 0);
+        lapMsg = { payload: { cmd: "RESET", lapStartTime: 0, lastLapTime: "--:--.---", carryOver: 0 } };
+    }
+}
+
+// ============================================================
+// 2. PARSE & MERGE DATA DARI MQTT (ecu ATAU gps)
+// ============================================================
+let data = msg.payload;
+if (Buffer.isBuffer(data)) data = data.toString();
+if (data && typeof data === 'string') {
+    try { data = JSON.parse(data); } catch (e) { }
+}
+
+if (msg.topic === "ecu" && data && typeof data === "object") flow.set("last_ecu_data", data);
+if (msg.topic === "gps" && data && typeof data === "object" && msg.retain !== true) flow.set("last_gps_data", data);
+
+let ecu = flow.get("last_ecu_data") || {};
+let gps = flow.get("last_gps_data") || {};
+
+let rpm = Number(ecu.rpm) || 0;
+let tps = Number(ecu.tps) || 0;
+let bat = Number(ecu.bat) || 0;
+let eot = Number(ecu.eot) || 0;
+let afr = Number(ecu.afr) || 0;
+let map_press = Number(ecu.map_press) || 0;
+
+let speed = Number(gps.speed) || 0;
+let lat = Number(gps.lat) || 0;
+let lng = Number(gps.lng) || 0;
+
+// ============================================================
+// 3. HITUNG STATE
+// ============================================================
+let isRunning = flow.get("isRunning") || false;
+let lapStartTime = flow.get("lapStartTime") || 0;
+let lastLapTime = flow.get("lastLapTime") || "--:--.---";
+
+let currentLapStatic = "--:--.---";
+if (isRunning) {
+    if (lapStartTime === 0) {
+        lapStartTime = Date.now();
+        flow.set("lapStartTime", lapStartTime);
+    }
+    let elapsed = (Date.now() - lapStartTime) / 1000;
+    let m = Math.floor(Math.abs(elapsed) / 60);
+    let s = Math.floor(Math.abs(elapsed) % 60);
+    let ms = Math.floor((Math.abs(elapsed) % 1) * 1000);
+    currentLapStatic = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+}
+
+// AVG is time-weighted GPS speed over measured intervals, not packet average.
+// GPS contract: speed in km/h; no source timestamp exists in this flow.
+// Use local receipt time, never count ECU merges as new GPS samples.
+let speedState = context.get("protoSpeedLapV1");
+if (!speedState || speedState.start !== lapStartTime || !isRunning) {
+    speedState = { start:lapStartTime, previous:null, integral:0, covered:0, points:[], gpsAt:0 };
+}
+const receivedAt=Date.now();
+const validSpeed = msg.topic === "gps" && msg.retain !== true && data && typeof data === "object" &&
+    data.speed !== null && data.speed !== undefined && String(data.speed).trim() !== "" &&
+    Number.isFinite(Number(data.speed)) && Number(data.speed)>=0 && Number(data.speed)<=200;
+if (isRunning && validSpeed) {
+    const v=Number(data.speed), prev=speedState.previous;
+    if (prev) {
+        const dt=(receivedAt-prev.at)/1000;
+        if(dt>0 && dt<=2) {
+            speedState.integral+=(prev.v+v)*0.5*dt;
+            speedState.covered+=dt;
+        }
+    }
+    if(!prev || receivedAt>prev.at) {
+        speedState.previous={at:receivedAt,v:v};speedState.gpsAt=receivedAt;
+        speedState.points.push({t:Math.max(0,(receivedAt-lapStartTime)/1000),v:v,
+            avg:speedState.covered>0?speedState.integral/speedState.covered:null});
+    }
+}
+context.set("protoSpeedLapV1",speedState);
+const avgSpeed=speedState.covered>0?speedState.integral/speedState.covered:null;
+const elapsedNow=isRunning?Math.max(0,(receivedAt-lapStartTime)/1000):0;
+const coverage=elapsedNow>0?Math.min(100,speedState.covered/elapsedNow*100):0;
+
+// ============================================================
+// 4. OUTPUT 1 – Dashboard Laptop
+// ============================================================
+let msgDashboard = {
+    payload: {
+        rpm, tps, bat, eot, afr, map_press,
+        avgSpeed:avgSpeed===null?null:avgSpeed.toFixed(2),
+        speedHistory:speedState.points.map(p=>({...p})),
+        gpsAge:speedState.gpsAt?(receivedAt-speedState.gpsAt)/1000:null,
+        speedCoverage:coverage.toFixed(1),
+        elapsedSec:elapsedNow,
+        targetTime:flow.get("targetTime") || 200,
+        speed: speed.toFixed(1),
+        voltage: bat.toFixed(1),
+        lastLapTime,
+        lapStartTime: lapStartTime,
+        lapCounter: flow.get("lapCounter") || 0,
+        isRunning,
+        carryOver: flow.get("carryOver") || 0,
+        effectiveTarget: (flow.get("targetTime") || 200) + (flow.get("carryOver") || 0)
+    }
+};
+
+// ============================================================
+// 5. OUTPUT 2 – Worldmap (Auto Center)
+// ============================================================
+let msgMap = null;
+if (lat !== 0 && lng !== 0) {
+    msgMap = {
+        payload: {
+            name: "RAKATA",
+            lat: lat,
+            lon: lng,
+            icon: "fa-location-arrow",
+            iconColor: "red",
+            track: true,
+            ttl: 180,
+            command: { lat: lat, lon: lng }
+        }
+    };
+}
+
+// ============================================================
+// 6. OUTPUT 3 – Logging ke CSV
+// ============================================================
+let logMsg = null;
+if (isRunning && (msg.topic === "ecu" || msg.topic === "gps")) {
+    let now = new Date().toISOString();
+    let line = `${now},${rpm},${tps},${bat},${eot},${afr},${map_press},${speed.toFixed(1)},${lat.toFixed(6)},${lng.toFixed(6)},${currentLapStatic}`;
+    logMsg = { payload: line };
+}
+
+return [msgDashboard, msgMap, logMsg, lapMsg];

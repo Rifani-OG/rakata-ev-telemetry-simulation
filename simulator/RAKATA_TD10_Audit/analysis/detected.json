@@ -1,0 +1,897 @@
+{
+  "thresholds": {
+    "idleCurrent": 0.159418,
+    "driveCurrent": 0.229418,
+    "glideCurrent": 0.25941800000000004
+  },
+  "laps": [
+    {
+      "lapCounter": 1,
+      "lapTime": "3:51.2",
+      "lapTimeMs": 231202,
+      "lapEnergy": 8.048,
+      "lapDistance": 1.427,
+      "kmPerKwh": 177.31113320079524,
+      "throttleEnergy": 7.1654,
+      "glideDistance": 0.8799999999999999,
+      "glideEnergy": 0.339599999999999,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 1025,
+            "endIdx": 1346,
+            "durationMs": 32883,
+            "distance": 0.224,
+            "energy": 4.359
+          },
+          {
+            "type": "throttle",
+            "startIdx": 2412,
+            "endIdx": 2590,
+            "durationMs": 18224,
+            "distance": 0.1180000000000001,
+            "energy": 2.2316000000000003
+          },
+          {
+            "type": "throttle",
+            "startIdx": 2816,
+            "endIdx": 2896,
+            "durationMs": 8191,
+            "distance": 0.039000000000000146,
+            "energy": 0.5747999999999998
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 1420,
+            "endIdx": 2411,
+            "durationMs": 101482,
+            "distance": 0.7409999999999999,
+            "energy": 0.23419999999999952
+          },
+          {
+            "type": "glide",
+            "startIdx": 2672,
+            "endIdx": 2815,
+            "durationMs": 14628,
+            "distance": 0.08699999999999997,
+            "energy": 0.03739999999999988
+          },
+          {
+            "type": "glide",
+            "startIdx": 2963,
+            "endIdx": 3228,
+            "durationMs": 27128,
+            "distance": 0.052000000000000046,
+            "energy": 0.06799999999999962
+          }
+        ]
+      },
+      "maxSpeed": 35.25,
+      "maxCurrent": 13.790156999999999,
+      "maxPower": 744.67,
+      "startIdx": 970,
+      "endIdx": 3228,
+      "startTriggerIdx": 980,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 2,
+      "lapTime": "3:32.2",
+      "lapTimeMs": 212196,
+      "lapEnergy": 7.6093000000000615,
+      "lapDistance": 1.477,
+      "kmPerKwh": 194.10458255029872,
+      "throttleEnergy": 6.502100000000006,
+      "glideDistance": 0.9390000000000002,
+      "glideEnergy": 0.32270000000006327,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 3738,
+            "endIdx": 3980,
+            "durationMs": 24780,
+            "distance": 0.181,
+            "energy": 3.7162000000000077
+          },
+          {
+            "type": "throttle",
+            "startIdx": 4887,
+            "endIdx": 4996,
+            "durationMs": 11144,
+            "distance": 0.07899999999999996,
+            "energy": 1.3241999999999994
+          },
+          {
+            "type": "throttle",
+            "startIdx": 5281,
+            "endIdx": 5382,
+            "durationMs": 10322,
+            "distance": 0.06699999999999995,
+            "energy": 1.4616999999999987
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 4049,
+            "endIdx": 4886,
+            "durationMs": 85650,
+            "distance": 0.654,
+            "energy": 0.1990999999999996
+          },
+          {
+            "type": "glide",
+            "startIdx": 5079,
+            "endIdx": 5275,
+            "durationMs": 20041,
+            "distance": 0.14000000000000012,
+            "energy": 0.04840000000000089
+          },
+          {
+            "type": "glide",
+            "startIdx": 5472,
+            "endIdx": 5786,
+            "durationMs": 32133,
+            "distance": 0.14500000000000002,
+            "energy": 0.07520000000006277
+          }
+        ]
+      },
+      "maxSpeed": 34.35,
+      "maxCurrent": 14.722532,
+      "maxPower": 795.02,
+      "startIdx": 3712,
+      "endIdx": 5786,
+      "startTriggerIdx": 3712,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 3,
+      "lapTime": "3:31.1",
+      "lapTimeMs": 211103,
+      "lapEnergy": 7.625100000000142,
+      "lapDistance": 1.425,
+      "kmPerKwh": 186.8827949797345,
+      "throttleEnergy": 6.900499999999987,
+      "glideDistance": 0.9530000000000001,
+      "glideEnergy": 0.35200000000016374,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 5812,
+            "endIdx": 6020,
+            "durationMs": 21302,
+            "distance": 0.157,
+            "energy": 3.5866000000000007
+          },
+          {
+            "type": "throttle",
+            "startIdx": 7157,
+            "endIdx": 7381,
+            "durationMs": 22950,
+            "distance": 0.18000000000000005,
+            "energy": 3.313899999999986
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 6090,
+            "endIdx": 7153,
+            "durationMs": 108808,
+            "distance": 0.758,
+            "energy": 0.2579000000001628
+          },
+          {
+            "type": "glide",
+            "startIdx": 7459,
+            "endIdx": 7849,
+            "durationMs": 39917,
+            "distance": 0.19500000000000006,
+            "energy": 0.09410000000000096
+          }
+        ]
+      },
+      "maxSpeed": 34.92,
+      "maxCurrent": 15.04055,
+      "maxPower": 812.19,
+      "startIdx": 5787,
+      "endIdx": 7849,
+      "startTriggerIdx": 5789,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 4,
+      "lapTime": "3:34.9",
+      "lapTimeMs": 214878,
+      "lapEnergy": 7.676400000000143,
+      "lapDistance": 1.431,
+      "kmPerKwh": 186.4155072690289,
+      "throttleEnergy": 6.856899999999996,
+      "glideDistance": 0.9900000000000001,
+      "glideEnergy": 0.3639000000001431,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 7880,
+            "endIdx": 8070,
+            "durationMs": 19479,
+            "distance": 0.144,
+            "energy": 3.491699999999998
+          },
+          {
+            "type": "throttle",
+            "startIdx": 9357,
+            "endIdx": 9558,
+            "durationMs": 20572,
+            "distance": 0.15599999999999992,
+            "energy": 3.365199999999998
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 8142,
+            "endIdx": 9352,
+            "durationMs": 123851,
+            "distance": 0.8210000000000001,
+            "energy": 0.28940000000000055
+          },
+          {
+            "type": "glide",
+            "startIdx": 9639,
+            "endIdx": 9949,
+            "durationMs": 31726,
+            "distance": 0.16900000000000004,
+            "energy": 0.07450000000014256
+          }
+        ]
+      },
+      "maxSpeed": 34.97,
+      "maxCurrent": 15.474582,
+      "maxPower": 835.63,
+      "startIdx": 7850,
+      "endIdx": 9949,
+      "startTriggerIdx": 7853,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 5,
+      "lapTime": "3:37.9",
+      "lapTimeMs": 217915,
+      "lapEnergy": 7.45840000000068,
+      "lapDistance": 1.439,
+      "kmPerKwh": 192.93682291106256,
+      "throttleEnergy": 6.649500000000032,
+      "glideDistance": 1.0150000000000001,
+      "glideEnergy": 0.3780000000006325,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 9973,
+            "endIdx": 10153,
+            "durationMs": 18429,
+            "distance": 0.129,
+            "energy": 3.378
+          },
+          {
+            "type": "throttle",
+            "startIdx": 11482,
+            "endIdx": 11680,
+            "durationMs": 20271,
+            "distance": 0.15300000000000002,
+            "energy": 3.2715000000000316
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 10230,
+            "endIdx": 11479,
+            "durationMs": 127821,
+            "distance": 0.855,
+            "energy": 0.2985000000006295
+          },
+          {
+            "type": "glide",
+            "startIdx": 11760,
+            "endIdx": 12079,
+            "durationMs": 32651,
+            "distance": 0.16000000000000014,
+            "energy": 0.07950000000000301
+          }
+        ]
+      },
+      "maxSpeed": 34.78,
+      "maxCurrent": 14.958737,
+      "maxPower": 807.77,
+      "startIdx": 9950,
+      "endIdx": 12079,
+      "startTriggerIdx": 9950,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 6,
+      "lapTime": "3:35.2",
+      "lapTimeMs": 215166,
+      "lapEnergy": 7.481400000000001,
+      "lapDistance": 1.451,
+      "kmPerKwh": 193.9476568556687,
+      "throttleEnergy": 6.373999999999995,
+      "glideDistance": 0.9410000000000003,
+      "glideEnergy": 0.3347999999999942,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 12106,
+            "endIdx": 12242,
+            "durationMs": 13926,
+            "distance": 0.093,
+            "energy": 2.732199999999999
+          },
+          {
+            "type": "throttle",
+            "startIdx": 13246,
+            "endIdx": 13415,
+            "durationMs": 17288,
+            "distance": 0.1309999999999999,
+            "energy": 2.1888000000000005
+          },
+          {
+            "type": "throttle",
+            "startIdx": 13758,
+            "endIdx": 13857,
+            "durationMs": 10146,
+            "distance": 0.06299999999999994,
+            "energy": 1.4529999999999959
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 12327,
+            "endIdx": 13233,
+            "durationMs": 92637,
+            "distance": 0.6340000000000001,
+            "energy": 0.21229999999999905
+          },
+          {
+            "type": "glide",
+            "startIdx": 13490,
+            "endIdx": 13753,
+            "durationMs": 26922,
+            "distance": 0.18400000000000016,
+            "energy": 0.06509999999999394
+          },
+          {
+            "type": "glide",
+            "startIdx": 13938,
+            "endIdx": 14183,
+            "durationMs": 25090,
+            "distance": 0.123,
+            "energy": 0.05740000000000123
+          }
+        ]
+      },
+      "maxSpeed": 34.62,
+      "maxCurrent": 14.925152,
+      "maxPower": 805.96,
+      "startIdx": 12080,
+      "endIdx": 14183,
+      "startTriggerIdx": 12084,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 7,
+      "lapTime": "3:55.3",
+      "lapTimeMs": 235311,
+      "lapEnergy": 6.654699999999998,
+      "lapDistance": 1.435,
+      "kmPerKwh": 215.6370685380258,
+      "throttleEnergy": 5.745699999999999,
+      "glideDistance": 1.073,
+      "glideEnergy": 0.43359999999999843,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 14204,
+            "endIdx": 14345,
+            "durationMs": 14445,
+            "distance": 0.093,
+            "energy": 2.7941000000000003
+          },
+          {
+            "type": "throttle",
+            "startIdx": 15796,
+            "endIdx": 15970,
+            "durationMs": 17826,
+            "distance": 0.13200000000000012,
+            "energy": 2.951599999999999
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 14425,
+            "endIdx": 15794,
+            "durationMs": 140180,
+            "distance": 0.866,
+            "energy": 0.3260000000000005
+          },
+          {
+            "type": "glide",
+            "startIdx": 16048,
+            "endIdx": 16482,
+            "durationMs": 44441,
+            "distance": 0.20700000000000007,
+            "energy": 0.10759999999999792
+          }
+        ]
+      },
+      "maxSpeed": 34.15,
+      "maxCurrent": 15.166723,
+      "maxPower": 819,
+      "startIdx": 14184,
+      "endIdx": 16482,
+      "startTriggerIdx": 14188,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 8,
+      "lapTime": "3:54.7",
+      "lapTimeMs": 234713,
+      "lapEnergy": 6.8324,
+      "lapDistance": 1.445,
+      "kmPerKwh": 211.49230138750661,
+      "throttleEnergy": 5.847499999999997,
+      "glideDistance": 1.073,
+      "glideEnergy": 0.4259000000000057,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 16522,
+            "endIdx": 16657,
+            "durationMs": 13841,
+            "distance": 0.093,
+            "energy": 2.851299999999995
+          },
+          {
+            "type": "throttle",
+            "startIdx": 18074,
+            "endIdx": 18249,
+            "durationMs": 17910,
+            "distance": 0.133,
+            "energy": 2.9962000000000018
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 16745,
+            "endIdx": 18070,
+            "durationMs": 135631,
+            "distance": 0.861,
+            "energy": 0.317300000000003
+          },
+          {
+            "type": "glide",
+            "startIdx": 18326,
+            "endIdx": 18778,
+            "durationMs": 46250,
+            "distance": 0.21199999999999997,
+            "energy": 0.1086000000000027
+          }
+        ]
+      },
+      "maxSpeed": 34.28,
+      "maxCurrent": 15.470724,
+      "maxPower": 835.42,
+      "startIdx": 16485,
+      "endIdx": 18778,
+      "startTriggerIdx": 16495,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 9,
+      "lapTime": "3:48.6",
+      "lapTimeMs": 228558,
+      "lapEnergy": 6.941000000001615,
+      "lapDistance": 1.43,
+      "kmPerKwh": 206.0221870047064,
+      "throttleEnergy": 6.238900000000029,
+      "glideDistance": 1.014,
+      "glideEnergy": 0.41110000000155367,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 18928,
+            "endIdx": 19154,
+            "durationMs": 23150,
+            "distance": 0.13899999999999998,
+            "energy": 3.1056000000000097
+          },
+          {
+            "type": "throttle",
+            "startIdx": 20447,
+            "endIdx": 20645,
+            "durationMs": 20282,
+            "distance": 0.15700000000000003,
+            "energy": 3.1333000000000197
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 19223,
+            "endIdx": 20445,
+            "durationMs": 125133,
+            "distance": 0.8140000000000001,
+            "energy": 0.30630000000113
+          },
+          {
+            "type": "glide",
+            "startIdx": 20715,
+            "endIdx": 21123,
+            "durationMs": 41778,
+            "distance": 0.19999999999999996,
+            "energy": 0.10480000000042367
+          }
+        ]
+      },
+      "maxSpeed": 34.47,
+      "maxCurrent": 15.279715,
+      "maxPower": 825.1,
+      "startIdx": 18891,
+      "endIdx": 21123,
+      "startTriggerIdx": 18901,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 10,
+      "lapTime": "3:49.8",
+      "lapTimeMs": 229763,
+      "lapEnergy": 7.117500000000817,
+      "lapDistance": 1.434,
+      "kmPerKwh": 201.47523709165233,
+      "throttleEnergy": 6.284999999999897,
+      "glideDistance": 1.016,
+      "glideEnergy": 0.39790000000093073,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 21150,
+            "endIdx": 21385,
+            "durationMs": 24057,
+            "distance": 0.155,
+            "energy": 3.250599999999963
+          },
+          {
+            "type": "throttle",
+            "startIdx": 22718,
+            "endIdx": 22903,
+            "durationMs": 18936,
+            "distance": 0.1419999999999999,
+            "energy": 3.034399999999934
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 21453,
+            "endIdx": 22717,
+            "durationMs": 129257,
+            "distance": 0.8230000000000001,
+            "energy": 0.30320000000070024
+          },
+          {
+            "type": "glide",
+            "startIdx": 22978,
+            "endIdx": 23370,
+            "durationMs": 40115,
+            "distance": 0.19299999999999984,
+            "energy": 0.09470000000023049
+          }
+        ]
+      },
+      "maxSpeed": 33.77,
+      "maxCurrent": 15.010819999999999,
+      "maxPower": 810.58,
+      "startIdx": 21124,
+      "endIdx": 23370,
+      "startTriggerIdx": 21124,
+      "endQuality": "strict"
+    },
+    {
+      "lapCounter": 11,
+      "lapTime": "3:57.6",
+      "lapTimeMs": 237620,
+      "lapEnergy": 6.829100000001048,
+      "lapDistance": 1.441,
+      "kmPerKwh": 211.00877128754578,
+      "throttleEnergy": 5.950500000000048,
+      "glideDistance": 1.022,
+      "glideEnergy": 0.41450000000102705,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 23696,
+            "endIdx": 23925,
+            "durationMs": 23451,
+            "distance": 0.141,
+            "energy": 2.980600000000038
+          },
+          {
+            "type": "throttle",
+            "startIdx": 25279,
+            "endIdx": 25455,
+            "durationMs": 18012,
+            "distance": 0.14000000000000012,
+            "energy": 2.9699000000000098
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 24005,
+            "endIdx": 25274,
+            "durationMs": 129883,
+            "distance": 0.815,
+            "energy": 0.3045000000007292
+          },
+          {
+            "type": "glide",
+            "startIdx": 25533,
+            "endIdx": 25981,
+            "durationMs": 45811,
+            "distance": 0.20700000000000007,
+            "energy": 0.11000000000029786
+          }
+        ]
+      },
+      "maxSpeed": 34.16,
+      "maxCurrent": 15.209781999999999,
+      "maxPower": 821.33,
+      "startIdx": 23659,
+      "endIdx": 25981,
+      "startTriggerIdx": 23663,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 12,
+      "lapTime": "3:53.0",
+      "lapTimeMs": 233002,
+      "lapEnergy": 6.725600000001208,
+      "lapDistance": 1.44,
+      "kmPerKwh": 214.10729154272352,
+      "throttleEnergy": 5.699100000000115,
+      "glideDistance": 1.02,
+      "glideEnergy": 0.40650000000114517,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 26011,
+            "endIdx": 26258,
+            "durationMs": 25244,
+            "distance": 0.141,
+            "energy": 2.7589000000000823
+          },
+          {
+            "type": "throttle",
+            "startIdx": 27576,
+            "endIdx": 27744,
+            "durationMs": 17206,
+            "distance": 0.1339999999999999,
+            "energy": 2.940200000000033
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 26340,
+            "endIdx": 27571,
+            "durationMs": 126053,
+            "distance": 0.809,
+            "energy": 0.2976000000007559
+          },
+          {
+            "type": "glide",
+            "startIdx": 27826,
+            "endIdx": 28258,
+            "durationMs": 44244,
+            "distance": 0.21099999999999985,
+            "energy": 0.10890000000038924
+          }
+        ]
+      },
+      "maxSpeed": 35.21,
+      "maxCurrent": 15.420852,
+      "maxPower": 832.73,
+      "startIdx": 25982,
+      "endIdx": 28258,
+      "startTriggerIdx": 25982,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 13,
+      "lapTime": "3:52.1",
+      "lapTimeMs": 232090,
+      "lapEnergy": 7.192200000000938,
+      "lapDistance": 1.434,
+      "kmPerKwh": 199.38266455324003,
+      "throttleEnergy": 6.373300000000043,
+      "glideDistance": 0.9899999999999998,
+      "glideEnergy": 0.3860000000009478,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 28308,
+            "endIdx": 28614,
+            "durationMs": 31325,
+            "distance": 0.184,
+            "energy": 3.396100000000061
+          },
+          {
+            "type": "throttle",
+            "startIdx": 29836,
+            "endIdx": 30008,
+            "durationMs": 17618,
+            "distance": 0.1280000000000001,
+            "energy": 2.977199999999982
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 28688,
+            "endIdx": 29832,
+            "durationMs": 117134,
+            "distance": 0.7669999999999999,
+            "energy": 0.2775000000006571
+          },
+          {
+            "type": "glide",
+            "startIdx": 30082,
+            "endIdx": 30525,
+            "durationMs": 45332,
+            "distance": 0.22299999999999986,
+            "energy": 0.1085000000002907
+          }
+        ]
+      },
+      "maxSpeed": 34.32,
+      "maxCurrent": 15.475985000000001,
+      "maxPower": 835.7,
+      "startIdx": 28259,
+      "endIdx": 30526,
+      "startTriggerIdx": 28268,
+      "endQuality": "strict"
+    },
+    {
+      "lapCounter": 14,
+      "lapTime": "3:40.3",
+      "lapTimeMs": 220313,
+      "lapEnergy": 7.50430000000074,
+      "lapDistance": 1.423,
+      "kmPerKwh": 189.62461522058817,
+      "throttleEnergy": 6.639700000000161,
+      "glideDistance": 1.0070000000000001,
+      "glideEnergy": 0.38900000000055,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 30870,
+            "endIdx": 31053,
+            "durationMs": 18741,
+            "distance": 0.133,
+            "energy": 3.4396000000000697
+          },
+          {
+            "type": "throttle",
+            "startIdx": 32321,
+            "endIdx": 32501,
+            "durationMs": 18429,
+            "distance": 0.139,
+            "energy": 3.2001000000000914
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 31124,
+            "endIdx": 32315,
+            "durationMs": 121873,
+            "distance": 0.8200000000000001,
+            "energy": 0.2868000000006532
+          },
+          {
+            "type": "glide",
+            "startIdx": 32583,
+            "endIdx": 32985,
+            "durationMs": 41114,
+            "distance": 0.18700000000000006,
+            "energy": 0.10219999999989682
+          }
+        ]
+      },
+      "maxSpeed": 35.14,
+      "maxCurrent": 15.413294,
+      "maxPower": 832.32,
+      "startIdx": 30832,
+      "endIdx": 32985,
+      "startTriggerIdx": 30838,
+      "endQuality": "boundary"
+    },
+    {
+      "lapCounter": 15,
+      "lapTime": "3:40.6",
+      "lapTimeMs": 220566,
+      "lapEnergy": 7.6592999999995754,
+      "lapDistance": 1.449,
+      "kmPerKwh": 189.18177901375847,
+      "throttleEnergy": 6.807000000000102,
+      "glideDistance": 0.987,
+      "glideEnergy": 0.37989999999958,
+      "phases": {
+        "throttle": [
+          {
+            "type": "throttle",
+            "startIdx": 33011,
+            "endIdx": 33286,
+            "durationMs": 28115,
+            "distance": 0.20199999999999999,
+            "energy": 3.7611000000000274
+          },
+          {
+            "type": "throttle",
+            "startIdx": 34503,
+            "endIdx": 34669,
+            "durationMs": 17008,
+            "distance": 0.12400000000000011,
+            "energy": 3.045900000000074
+          }
+        ],
+        "glide": [
+          {
+            "type": "glide",
+            "startIdx": 33358,
+            "endIdx": 34499,
+            "durationMs": 116782,
+            "distance": 0.7839999999999999,
+            "energy": 0.282299999999708
+          },
+          {
+            "type": "glide",
+            "startIdx": 34747,
+            "endIdx": 35140,
+            "durationMs": 40245,
+            "distance": 0.20300000000000007,
+            "energy": 0.09759999999987201
+          }
+        ]
+      },
+      "maxSpeed": 34.01,
+      "maxCurrent": 15.452503,
+      "maxPower": 834.44,
+      "startIdx": 32986,
+      "endIdx": 35141,
+      "startTriggerIdx": 32986,
+      "endQuality": "strict"
+    }
+  ]
+}

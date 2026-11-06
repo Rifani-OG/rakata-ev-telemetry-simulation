@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>KMHE 3D Driving Simulator & AI Coach</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { overflow: hidden; background: #111; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #fff; }
+        #game-canvas { width: 100vw; height: 100vh; display: block; }
+        
+        /* HUD Ala GTA + Telemetry KMHE */
+        #hud-top {
+            position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+            background: rgba(15, 20, 28, 0.88); border: 2px solid #334155;
+            border-radius: 10px; padding: 10px 24px; text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6); min-width: 420px;
+        }
+        #ai-banner { font-size: 20px; font-weight: 800; letter-spacing: 1px; padding: 4px 12px; border-radius: 6px; margin-bottom: 4px; }
+        .pulse-mode { background: #dc2626; color: #fff; box-shadow: 0 0 15px rgba(220,38,38,0.7); }
+        .glide-mode { background: #0284c7; color: #fff; box-shadow: 0 0 15px rgba(2,132,199,0.7); }
+        #ai-subtext { font-size: 13px; color: #cbd5e1; }
+
+        /* Minimap Radar Ala GTA di Kiri Bawah */
+        #radar-container {
+            position: absolute; bottom: 20px; left: 20px;
+            width: 210px; height: 210px; background: rgba(12, 18, 24, 0.9);
+            border: 3px solid #94a3b8; border-radius: 12px; overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.75);
+        }
+        #radar-canvas { width: 100%; height: 100%; display: block; }
+        .health-armor-bar {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 8px;
+            display: flex; background: #1e293b;
+        }
+        #throttle-bar { width: 0%; background: #22c55e; transition: width 0.05s; }
+
+        /* Speedometer & Telemetry di Kanan Bawah */
+        #telemetry-panel {
+            position: absolute; bottom: 20px; right: 20px;
+            background: rgba(15, 20, 28, 0.9); border: 2px solid #334155;
+            border-radius: 12px; padding: 16px 20px; width: 280px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.75);
+        }
+        .speed-big { font-size: 46px; font-weight: 900; color: #38bdf8; line-height: 1; }
+        .speed-unit { font-size: 14px; color: #94a3b8; font-weight: 600; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; border-top: 1px solid #334155; padding-top: 10px; }
+        .stat-box { background: rgba(30, 41, 59, 0.7); padding: 6px 10px; border-radius: 6px; }
+        .stat-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+        .stat-val { font-size: 16px; font-weight: 700; color: #f8fafc; }
+
+        /* Controls Help di Kiri Atas */
+        #controls-box {
+            position: absolute; top: 16px; left: 20px;
+            background: rgba(15, 20, 28, 0.82); border: 1px solid #334155;
+            border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #cbd5e1; line-height: 1.6;
+        }
+        .key { background: #334155; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #fff; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+<canvas id="game-canvas"></canvas>
+
+<div id="controls-box">
+    <div><span class="key">W</span> / <span class="key">↑</span> : Gas (Pulse 100%)</div>
+    <div><span class="key">E</span> : Gas Efisien (Pulse 80%)</div>
+    <div><span class="key">S</span> / <span class="key">↓</span> : Rem</div>
+    <div><span class="key">A</span> <span class="key">D</span> / <span class="key">←</span> <span class="key">→</span> : Belok Kiri/Kanan</div>
+    <div><span class="key">C</span> : Ganti Kamera (GTA Chase / Cockpit)</div>
+    <div><span class="key">R</span> : Reset ke Garis Start</div>
+</div>
+
+<div id="hud-top">
+    <div id="ai-banner" class="pulse-mode">AI SARAN: PULSE (INJAK GAS 85%)</div>
+    <div id="ai-subtext">Target Kecepatan Optimal Segmen Ini: 28.5 km/jam</div>
+</div>
+
+<div id="radar-container">
+    <canvas id="radar-canvas" width="210" height="210"></canvas>
+    <div class="health-armor-bar">
+        <div id="throttle-bar"></div>
+    </div>
+</div>
+
+<div id="telemetry-panel">
+    <div>
+        <span id="ui-speed" class="speed-big">0.0</span>
+        <span class="speed-unit">KM/JAM</span>
+    </div>
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="stat-label">Daya (Power)</div>
+            <div id="ui-power" class="stat-val">7.8 W</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Arus (54V)</div>
+            <div id="ui-current" class="stat-val">0.14 A</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Jarak Tempuh</div>
+            <div id="ui-dist" class="stat-val">0 m</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Energi</div>
+            <div id="ui-energy" class="stat-val">0.00 Wh</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Efisiensi</div>
+            <div id="ui-eff" class="stat-val" style="color:#4ade80;">0.0 km/kWh</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Waktu Lap</div>
+            <div id="ui-time" class="stat-val">0.0 s</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================================
+// 1. PEMETAAN LINTASAN SIRKUIT DARI KOORDINAT GPS KMHE (SKALA METER)
+// ============================================================================
+const trackWaypoints = [
+    {x: 0, z: 0}, {x: 0, z: -120}, {x: 8, z: -230}, {x: 45, z: -310},
+    {x: 130, z: -340}, {x: 240, z: -340}, {x: 310, z: -290}, {x: 340, z: -200},
+    {x: 340, z: -70}, {x: 330, z: 60}, {x: 280, z: 140}, {x: 190, z: 165},
+    {x: 90, z: 160}, {x: 20, z: 110}, {x: 0, z: 40}
+];
+
+// Buat spline sirkuit tertutup yang mulus (1.520 meter)
+const curvePoints = trackWaypoints.map(p => new THREE.Vector3(p.x, 0, p.z));
+const trackCurve = new THREE.CatmullRomCurve3(curvePoints, true, 'catmullrom', 0.5);
+const TOTAL_TRACK_LENGTH = 1520.0; // Sesuai data GPS Attempt 2 (1.520 m)
+
+// Zona Pulse (Gas) & Glide (Lepas Gas) hasil Dynamic Programming AI
+function getAIStrategy(trackProgressMeters, currentSpeed) {
+    const m = ((trackProgressMeters % TOTAL_TRACK_LENGTH) + TOTAL_TRACK_LENGTH) % TOTAL_TRACK_LENGTH;
+    // 5 Zona Pulse utama di lintasan lurus, dan Glide sebelum masuk tikungan
+    const isPulseZone = (m >= 0 && m <= 165) || 
+                        (m >= 360 && m <= 490) || 
+                        (m >= 680 && m <= 830) || 
+                        (m >= 1040 && m <= 1160) || 
+                        (m >= 1340 && m <= 1435);
+    
+    if (isPulseZone && currentSpeed < 33.5) {
+        return { action: 'PULSE', recThrottle: 85, targetSpeed: '26 - 33 km/jam' };
+    } else if (currentSpeed < 15.5) {
+        return { action: 'PULSE', recThrottle: 80, targetSpeed: 'Min 16 km/jam (Jangan Terlalu Lambat)' };
+    } else {
+        return { action: 'GLIDE', recThrottle: 0, targetSpeed: 'Meluncur Bebas (Coasting 0%)' };
+    }
+}
+
+// ============================================================================
+// 2. INISIALISASI SCENE 3D THREE.JS
+// ============================================================================
+const canvas = document.getElementById('game-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+scene.fog = new THREE.FogExp2(0x87ceeb, 0.0018);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1200);
+
+// Pencahayaan Matahari + Ambient
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xfffbeb, 0.9);
+sunLight.position.set(150, 300, 100);
+sunLight.castShadow = true;
+scene.add(sunLight);
+
+// Tanah Rumput
+const groundGeo = new THREE.PlaneGeometry(3000, 3000);
+const groundMat = new THREE.MeshLambertMaterial({ color: 0x2d4c1e });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.05;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Bangun Mesh Jalan Raya Sirkuit + Marka Warna AI (Merah = Pulse, Biru = Glide)
+function buildTrackMesh() {
+    const segments = 450;
+    const roadWidth = 9.0;
+    const positions = [];
+    const colors = [];
+    const indices = [];
+
+    for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const pt = trackCurve.getPointAt(t);
+        const tangent = trackCurve.getTangentAt(t).normalize();
+        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x);
+
+        const left = pt.clone().add(normal.clone().multiplyScalar(roadWidth / 2));
+        const right = pt.clone().add(normal.clone().multiplyScalar(-roadWidth / 2));
+
+        positions.push(left.x, 0.01, left.z, right.x, 0.01, right.z);
+
+        // Warna bahu/indikator jalur berdasarkan strategi AI
+        const distM = t * TOTAL_TRACK_LENGTH;
+        const ai = getAIStrategy(distM, 22.0);
+        const c = ai.action === 'PULSE' ? new THREE.Color(0x472828) : new THREE.Color(0x283547);
+        colors.push(c.r, c.g, c.b, c.r, c.g, c.b);
+
+        if (i < segments) {
+            const base = i * 2;
+            indices.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+        }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geo, mat);
+    scene.add(mesh);
+
+    // Garis Start/Finish
+    const startPt = trackCurve.getPointAt(0);
+    const startGeo = new THREE.PlaneGeometry(roadWidth, 3);
+    const startMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    const startLine = new THREE.Mesh(startGeo, startMat);
+    startLine.rotation.x = Math.PI / 2;
+    startLine.position.set(startPt.x, 0.03, startPt.z);
+    scene.add(startLine);
+
+    // Pohon / Tiang Referensi Kecepatan di Pinggir Sirkuit
+    const pillarGeo = new THREE.CylinderGeometry(0.4, 0.4, 5, 8);
+    for (let i = 0; i < 90; i++) {
+        const t = i / 90;
+        const pt = trackCurve.getPointAt(t);
+        const tangent = trackCurve.getTangentAt(t).normalize();
+        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x);
+        const sideOffset = (i % 2 === 0 ? 1 : -1) * (roadWidth / 2 + 4.5);
+        const pos = pt.clone().add(normal.multiplyScalar(sideOffset));
+
+        const distM = t * TOTAL_TRACK_LENGTH;
+        const isPulse = getAIStrategy(distM, 22.0).action === 'PULSE';
+        const pMat = new THREE.MeshLambertMaterial({ color: isPulse ? 0xef4444 : 0x38bdf8 });
+        const pillar = new THREE.Mesh(pillarGeo, pMat);
+        pillar.position.set(pos.x, 2.5, pos.z);
+        scene.add(pillar);
+    }
+}
+buildTrackMesh();
+
+// ============================================================================
+// 3. PEMBUATAN MOBIL URBAN PROTOTYPE KMHE 3D + GHOST CAR AI
+// ============================================================================
+function createCarMesh(bodyColor) {
+    const carGroup = new THREE.Group();
+
+    // Bodi Bawah Aerodinamis
+    const bodyGeo = new THREE.BoxGeometry(1.5, 0.55, 3.4);
+    const bodyMat = new THREE.MeshPhongMaterial({ color: bodyColor, shininess: 90 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.45;
+    body.castShadow = true;
+    carGroup.add(body);
+
+    // Kanopi Kaca Kabin
+    const cabinGeo = new THREE.BoxGeometry(1.25, 0.48, 1.8);
+    const cabinMat = new THREE.MeshPhongMaterial({ color: 0x111827, shininess: 120 });
+    const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+    cabin.position.set(0, 0.9, -0.1);
+    carGroup.add(cabin);
+
+    // 4 Roda
+    const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.22, 16);
+    wheelGeo.rotateZ(Math.PI / 2);
+    const wheelMat = new THREE.MeshLambertMaterial({ color: 0x1f2937 });
+    const wheelPositions = [
+        [-0.8, 0.32, -1.1], [0.8, 0.32, -1.1],
+        [-0.8, 0.32, 1.1],  [0.8, 0.32, 1.1]
+    ];
+    wheelPositions.forEach(pos => {
+        const w = new THREE.Mesh(wheelGeo, wheelMat);
+        w.position.set(pos[0], pos[1], pos[2]);
+        carGroup.add(w);
+    });
+
+    return carGroup;
+}
+
+const playerCar = createCarMesh(0xdc2626); // Mobil Merah Rakata/KMHE
+scene.add(playerCar);
+
+// ============================================================================
+// 4. MODEL FISIKA DIGITAL TWIN AI (TERKALIBRASI DATA CSV KMHE)
+// ============================================================================
+const carState = {
+    x: 0, z: 0,
+    heading: 0,        // Radian (0 = menghadap -Z)
+    speedKmh: 0.0,     // km/jam
+    throttle: 0.0,     // 0 - 100 %
+    brake: 0.0,
+    powerW: 7.8,       // Watt
+    voltage: 54.0,     // Volt konstan sesuai CSV
+    distanceM: 0.0,    // Meter
+    energyWh: 0.0,     // Wh
+    timeS: 0.0,        // Detik
+    cameraMode: 0      // 0 = GTA Chase Cam, 1 = Cockpit Hood Cam
+};
+
+function resetCar() {
+    const startPt = trackCurve.getPointAt(0);
+    const startTan = trackCurve.getTangentAt(0).normalize();
+    carState.x = startPt.x;
+    carState.z = startPt.z;
+    carState.heading = Math.atan2(startTan.x, -startTan.z);
+    carState.speedKmh = 0.0;
+    carState.throttle = 0.0;
+    carState.powerW = 7.8;
+    carState.distanceM = 0.0;
+    carState.energyWh = 0.0;
+    carState.timeS = 0.0;
+}
+resetCar();
+
+// Input Keyboard
+const keys = {};
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'KeyC') carState.cameraMode = (carState.cameraMode + 1) % 2;
+    if (e.code === 'KeyR') resetCar();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// Fungsi Step Fisika Digital Twin (Sesuai Hasil Regresi Data Attempt 1-4)
+function updatePhysics(dt) {
+    // 1. Baca Input Throttle
+    if (keys['KeyW'] || keys['ArrowUp']) {
+        carState.throttle = Math.min(100, carState.throttle + 250 * dt);
+    } else if (keys['KeyE']) {
+        carState.throttle = 80; // Bukaan gas efisien rekomendasi AI
+    } else {
+        carState.throttle = 0;
+    }
+
+    const isBraking = keys['KeyS'] || keys['ArrowDown'];
+
+    // 2. Kemudi (Steering) + Cornering Scrub
+    let steerInput = 0;
+    if (keys['KeyA'] || keys['ArrowLeft']) steerInput = -1;
+    if (keys['KeyD'] || keys['ArrowRight']) steerInput = 1;
+
+    const speedMs = carState.speedKmh / 3.6;
+    const turnRate = steerInput * 1.15 * Math.min(1.0, speedMs / 3.5);
+    carState.heading += turnRate * dt;
+
+    const curvaturePenalty = Math.abs(turnRate) * 0.28;
+
+    // 3. Persamaan Surrogate AI (Daya & Percepatan dari CSV KMHE)
+    let dvDt = 0.0; // km/h per detik
+    if (carState.throttle > 5) {
+        // Saat Pulse: rata-rata dv/dt = +1.56 km/h/s pada throttle 100%, menurun terhadap aerodynamic drag v^2
+        const thrFactor = carState.throttle / 100.0;
+        const aeroDrag = 0.00065 * (carState.speedKmh * carState.speedKmh);
+        dvDt = (2.15 * thrFactor) - (0.018 * carState.speedKmh) - aeroDrag - curvaturePenalty;
+
+        // Daya Listrik (Watt): Puncak ~920W saat inrush kecepatan rendah, melandai saat back-EMF naik
+        const inrushFactor = Math.max(0.55, 1.18 - 0.012 * carState.speedKmh);
+        carState.powerW = Math.min(936.0, Math.max(15.0, 660.0 * Math.pow(thrFactor, 1.35) * inrushFactor));
+    } else {
+        // Saat Glide (Throttle = 0%): Perlambatan alami rata-rata -0.34 km/h/s (sesuai Attempt 2)
+        const rollingResistance = 0.24;
+        const aeroDrag = 0.00022 * (carState.speedKmh * carState.speedKmh);
+        dvDt = -(rollingResistance + aeroDrag + curvaturePenalty);
+        carState.powerW = 7.8; // Daya standby sistem mikrokontroler & telemetri 54V
+    }
+
+    if (isBraking) {
+        dvDt -= 6.5;
+    }
+
+    // Update Kecepatan, Jarak, dan Energi
+    carState.speedKmh = Math.max(0.0, Math.min(50.0, carState.speedKmh + dvDt * dt));
+    const currentSpeedMs = carState.speedKmh / 3.6;
+
+    carState.x += Math.sin(carState.heading) * currentSpeedMs * dt;
+    carState.z -= Math.cos(carState.heading) * currentSpeedMs * dt;
+
+    if (carState.speedKmh > 0.1 || carState.throttle > 0) {
+        carState.timeS += dt;
+        carState.distanceM += currentSpeedMs * dt;
+        carState.energyWh += carState.powerW * (dt / 3600.0);
+    }
+
+    // Update Posisi & Rotasi Mesh Mobil 3D
+    playerCar.position.set(carState.x, 0, carState.z);
+    playerCar.rotation.y = -carState.heading;
+
+    // Update Kamera Ala GTA (Smooth Third-Person Chase Cam)
+    if (carState.cameraMode === 0) {
+        const camDist = 8.5;
+        const camHeight = 3.6;
+        const targetCamX = carState.x - Math.sin(carState.heading) * camDist;
+        const targetCamZ = carState.z + Math.cos(carState.heading) * camDist;
+        camera.position.lerp(new THREE.Vector3(targetCamX, camHeight, targetCamZ), 0.12);
+        camera.lookAt(carState.x + Math.sin(carState.heading) * 6, 1.0, carState.z - Math.cos(carState.heading) * 6);
+    } else {
+        // Kamera Cockpit / Kap Mobil
+        camera.position.set(carState.x, 1.35, carState.z);
+        camera.lookAt(carState.x + Math.sin(carState.heading) * 20, 1.2, carState.z - Math.cos(carState.heading) * 20);
+    }
+}
+
+// ============================================================================
+// 5. MINIMAP RADAR ALA GTA & UPDATE HUD REAL-TIME
+// ============================================================================
+const radarCanvas = document.getElementById('radar-canvas');
+const rCtx = radarCanvas.getContext('2d');
+
+function drawGTARadar() {
+    rCtx.clearRect(0, 0, 210, 210);
+    rCtx.save();
+    rCtx.translate(105, 105);
+    // Putar radar mengikuti arah hadap mobil seperti di GTA
+    rCtx.rotate(carState.heading);
+
+    const scale = 0.35;
+    rCtx.lineWidth = 6;
+    for (let i = 0; i < 150; i++) {
+        const t1 = i / 150;
+        const t2 = (i + 1) / 150;
+        const p1 = trackCurve.getPointAt(t1);
+        const p2 = trackCurve.getPointAt(t2);
+        const ai = getAIStrategy(t1 * TOTAL_TRACK_LENGTH, 22.0);
+
+        rCtx.strokeStyle = ai.action === 'PULSE' ? '#ef4444' : '#38bdf8';
+        rCtx.beginPath();
+        rCtx.moveTo((p1.x - carState.x) * scale, (p1.z - carState.z) * scale);
+        rCtx.lineTo((p2.x - carState.x) * scale, (p2.z - carState.z) * scale);
+        rCtx.stroke();
+    }
+    rCtx.restore();
+
+    // Segitiga Ikon Pemain di Tengah Radar
+    rCtx.fillStyle = '#ffffff';
+    rCtx.beginPath();
+    rCtx.moveTo(105, 96);
+    rCtx.lineTo(99, 112);
+    rCtx.lineTo(111, 112);
+    rCtx.closePath();
+    rCtx.fill();
+}
+
+function updateHUD() {
+    document.getElementById('ui-speed').innerText = carState.speedKmh.toFixed(1);
+    document.getElementById('ui-power').innerText = carState.powerW.toFixed(1) + ' W';
+    document.getElementById('ui-current').innerText = (carState.powerW / carState.voltage).toFixed(2) + ' A';
+    document.getElementById('ui-dist').innerText = carState.distanceM.toFixed(0) + ' m';
+    document.getElementById('ui-energy').innerText = carState.energyWh.toFixed(2) + ' Wh';
+    document.getElementById('ui-time').innerText = carState.timeS.toFixed(1) + ' s';
+
+    const eff = carState.energyWh > 0.05 ? (carState.distanceM / 1000.0) / (carState.energyWh / 1000.0) : 0.0;
+    document.getElementById('ui-eff').innerText = eff.toFixed(1) + ' km/kWh';
+    document.getElementById('throttle-bar').style.width = carState.throttle + '%';
+
+    // Update Rekomendasi AI Coach
+    const ai = getAIStrategy(carState.distanceM, carState.speedKmh);
+    const banner = document.getElementById('ai-banner');
+    if (ai.action === 'PULSE') {
+        banner.className = 'pulse-mode';
+        banner.innerText = `AI SARAN: PULSE (INJAK GAS ${ai.recThrottle}%)`;
+    } else {
+        banner.className = 'glide-mode';
+        banner.innerText = 'AI SARAN: GLIDE (LEPAS GAS 0%)';
+    }
+    document.getElementById('ai-subtext').innerText = `Panduan Segmen (${(carState.distanceM % TOTAL_TRACK_LENGTH).toFixed(0)}m / 1520m): ${ai.targetSpeed}`;
+}
+
+// Loop Utama 60 FPS
+let lastTime = performance.now();
+function animate(now) {
+    requestAnimationFrame(animate);
+    const dt = Math.min(0.1, (now - lastTime) / 1000.0);
+    lastTime = now;
+
+    updatePhysics(dt);
+    drawGTARadar();
+    updateHUD();
+    renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

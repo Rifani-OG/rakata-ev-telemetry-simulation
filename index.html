@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAKATA URBAN — Telemetry & Digital Twin Hub</title>
+    <style>
+        :root {
+            --bg: #f6f6f3;
+            --surface: #ffffff;
+            --surface-subtle: #f9f9f8;
+            --text-main: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #6b7280;
+            --border: #d8dadf;
+            --border-subtle: #e5e7eb;
+            --accent: #0f172a;
+            --accent-hover: #1e293b;
+            --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "JetBrains Mono", monospace;
+            --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: var(--sans);
+            font-size: 14px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Top Navigation */
+        .nav-wrapper {
+            background-color: var(--surface);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-inner {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-brand-sub {
+            color: var(--text-muted);
+            font-weight: 400;
+            border-left: 1px solid var(--border);
+            padding-left: 10px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 13px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+            text-decoration: none;
+        }
+
+        .btn-launch {
+            display: inline-block;
+            background-color: var(--accent);
+            color: #ffffff !important;
+            padding: 6px 14px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.15s ease;
+            text-decoration: none !important;
+        }
+
+        .btn-launch:hover {
+            background-color: var(--accent-hover);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 40px 24px 80px 24px;
+        }
+
+        /* Document Header */
+        .doc-header {
+            margin-bottom: 32px;
+            text-align: left;
+        }
+
+        .doc-meta {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .doc-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+            line-height: 1.25;
+            margin-bottom: 14px;
+        }
+
+        .doc-abstract {
+            font-size: 15px;
+            color: var(--text-secondary);
+            max-width: 900px;
+            line-height: 1.65;
+        }
+
+        /* Specifications Table */
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.01em;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .section-title .section-tag {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 1px;
+            background-color: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            margin-bottom: 40px;
+            overflow: hidden;
+        }
+
+        .spec-cell {
+            background-color: var(--surface);
+            padding: 14px 16px;
+            text-align: left;
+        }
+
+        .spec-label {
+            font-family: var(--mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            letter-spacing: 0.04em;
+        }
+
+        .spec-value {
+            font-family: var(--mono);
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .spec-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Module Grid */
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 18px;
+            margin-bottom: 48px;
+        }
+
+        .module-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            text-align: left;
+        }
+
+        .module-header {
+            margin-bottom: 12px;
+        }
+
+        .module-id {
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.06em;
+            margin-bottom: 4px;
+        }
+
+        .module-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 8px;
+            line-height: 1.35;
+        }
+
+        .module-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.55;
+            margin-bottom: 16px;
+        }
+
+        .module-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+
+        .module-tag {
+            background-color: var(--surface-subtle);
+            border: 1px solid var(--border-subtle);
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 2px;
+            color: var(--text-secondary);
+        }
+
+        .module-footer {
+            border-top: 1px solid var(--border-subtle);
+            padding-top: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .module-link {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .module-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Figure Gallery */
+        .figures-section {
+            margin-bottom: 48px;
+        }
+
+        .figure-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .figure-img-wrap {
+            width: 100%;
+            background-color: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 2px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .figure-img-wrap img {
+            width: 100%;
+            height: auto;
+            max-height: 520px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .figure-caption {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            border-left: 2px solid var(--accent);
+            padding-left: 10px;
+        }
+
+        .figure-caption strong {
+            font-family: var(--mono);
+            color: var(--text-main);
+        }
+
+        /* Architecture Table */
+        .arch-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 48px;
+            font-size: 13px;
+        }
+
+        .arch-table th,
+        .arch-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .arch-table th {
+            background-color: var(--surface-subtle);
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .arch-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .arch-badge {
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 2px 6px;
+            background-color: var(--surface-subtle);
+            border: 1px solid var(--border-subtle);
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        /* Footer */
+        .footer {
+            border-top: 1px solid var(--border);
+            padding-top: 24px;
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .specs-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .modules-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .specs-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .nav-inner {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .nav-links {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="nav-wrapper">
+        <div class="nav-inner">
+            <div class="nav-brand">
+                <span>RAKATA URBAN</span>
+                <span class="nav-brand-sub">Telemetry & Simulation Hub</span>
+            </div>
+            <div class="nav-links">
+                <a href="#workbenches">Workbenches</a>
+                <a href="#specifications">Specifications</a>
+                <a href="#validation">Validation</a>
+                <a href="#architecture">Architecture</a>
+                <a href="./dashboard/index.html" class="btn-launch">Open Telemetry Viewer &rarr;</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+
+        <!-- Document Header -->
+        <header class="doc-header">
+            <div class="doc-meta">Institut Teknologi Bandung &middot; RAKATA Urban Concept EV (KMHE 2026)</div>
+            <h1 class="doc-title">Vehicle Telemetry, System Identification & Driver-in-the-Loop Simulation</h1>
+            <p class="doc-abstract">
+                An integrated computational engineering workbench and telemetry analysis suite developed for the
+                Kontes Mobil Hemat Energi (KMHE) 2026 Urban Concept Electric Vehicle. Combines real-time MQTT cloud
+                ingestion,
+                dual-lap browser telemetry replay with GPS transmission-loss interpolation, empirical drivetrain system
+                identification
+                (MATLAB/Simulink and Python state-space estimation), and Three.js physics-accurate circuit simulators
+                for driver
+                throttle profiling and multi-lap competition strategy optimization.
+            </p>
+        </header>
+
+        <!-- Specifications Matrix -->
+        <section id="specifications">
+            <div class="section-title">
+                <span>Vehicle Physical Parameters & Validation Benchmarks</span>
+                <span class="section-tag">Drivetrain Specification</span>
+            </div>
+            <div class="specs-grid">
+                <div class="spec-cell">
+                    <div class="spec-label">Total Mass</div>
+                    <div class="spec-value">141 kg</div>
+                    <div class="spec-desc">Vehicle + driver load</div>
+                </div>
+                <div class="spec-cell">
+                    <div class="spec-label">Gear Ratio</div>
+                    <div class="spec-value">1:11</div>
+                    <div class="spec-desc">Single-stage reduction</div>
+                </div>
+                <div class="spec-cell">
+                    <div class="spec-label">Nominal Bus</div>
+                    <div class="spec-value">54.0 V</div>
+                    <div class="spec-desc">13S Li-ion pack</div>
+                </div>
+                <div class="spec-cell">
+                    <div class="spec-label">Target Lap Time</div>
+                    <div class="spec-value">&le; 220 s</div>
+                    <div class="spec-desc">Sport Jabar circuit</div>
+                </div>
+                <div class="spec-cell">
+                    <div class="spec-label">Speed RMSE</div>
+                    <div class="spec-value">1.59 km/h</div>
+                    <div class="spec-desc">Holdout validation</div>
+                </div>
+                <div class="spec-cell">
+                    <div class="spec-label">Energy MAE</div>
+                    <div class="spec-value">0.22 Wh</div>
+                    <div class="spec-desc">Residual error / lap</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Engineering Modules -->
+        <section id="workbenches">
+            <div class="section-title">
+                <span>Interactive Applications & Simulation Workbenches</span>
+                <span class="section-tag">Direct Access</span>
+            </div>
+            <div class="modules-grid">
+
+                <!-- Module 1: Dashboard -->
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-id">Module 01 &middot; Web Analytics</div>
+                        <h2 class="module-title">Telemetry Web Analyzer (V6 Lag Recovery)</h2>
+                        <p class="module-desc">
+                            High-frequency telemetry analysis tool featuring automatic GPS packet-loss gap recovery,
+                            dual-lap synchronized comparisons, start-line proximity lap splitting, and synchronized
+                            Chart.js time-series plots (Speed, Current, Voltage, Power, and Recorded Delta Wh).
+                        </p>
+                        <div class="module-tags">
+                            <span class="module-tag">HTML5 / ES6</span>
+                            <span class="module-tag">Leaflet GPS</span>
+                            <span class="module-tag">Chart.js</span>
+                            <span class="module-tag">PapaParse</span>
+                        </div>
+                    </div>
+                    <div class="module-footer">
+                        <span
+                            style="font-family:var(--mono);font-size:11px;color:var(--text-muted);">dashboard/index.html</span>
+                        <a href="./dashboard/index.html" class="module-link">Launch Workbench &rarr;</a>
+                    </div>
+                </div>
+
+                <!-- Module 2: Driver Trainer -->
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-id">Module 02 &middot; Driver Simulator</div>
+                        <h2 class="module-title">3D Driver-in-the-Loop Trainer (Sport Jabar)</h2>
+                        <p class="module-desc">
+                            Real-time 3D circuit trainer modeling track elevation, cornering curvature, BLDC motor
+                            torque
+                            curves, rolling resistance, and regenerative braking. Designed to train drivers for optimal
+                            pulse-and-glide
+                            throttle manipulation.
+                        </p>
+                        <div class="module-tags">
+                            <span class="module-tag">Three.js</span>
+                            <span class="module-tag">Vehicle Kinematics</span>
+                            <span class="module-tag">Track Curvature</span>
+                            <span class="module-tag">Real-Time HUD</span>
+                        </div>
+                    </div>
+                    <div class="module-footer">
+                        <span
+                            style="font-family:var(--mono);font-size:11px;color:var(--text-muted);">simulator/.../RAKATA_TD10_Trainer.html</span>
+                        <a href="./simulator/RAKATA_KMHE_Simulator_V4_TD12/RAKATA_KMHE_TD12/RAKATA_TD10_Trainer.html"
+                            class="module-link">Launch Circuit Trainer &rarr;</a>
+                    </div>
+                </div>
+
+                <!-- Module 3: Attempt Simulator -->
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-id">Module 03 &middot; Strategy Optimization</div>
+                        <h2 class="module-title">KMHE UNEJ 6-Lap Full Attempt Simulator</h2>
+                        <p class="module-desc">
+                            Endurance race strategist calculating multi-lap energy depletion, thermal derating, target
+                            lap
+                            windows, and cumulative Wh consumption across the full 6-lap official competition attempt at
+                            the UNEJ circuit.
+                        </p>
+                        <div class="module-tags">
+                            <span class="module-tag">Energy Integration</span>
+                            <span class="module-tag">Race Strategy</span>
+                            <span class="module-tag">Multi-Lap State Machine</span>
+                        </div>
+                    </div>
+                    <div class="module-footer">
+                        <span
+                            style="font-family:var(--mono);font-size:11px;color:var(--text-muted);">simulator/.../RAKATA_KMHE_Attempt.html</span>
+                        <a href="./simulator/RAKATA_KMHE_Simulator_V4_TD12/RAKATA_KMHE_TD12/RAKATA_KMHE_Attempt.html"
+                            class="module-link">Launch Attempt Simulator &rarr;</a>
+                    </div>
+                </div>
+
+                <!-- Module 4: Validation Report -->
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-id">Module 04 &middot; System Identification</div>
+                        <h2 class="module-title">System Identification & Validation Report</h2>
+                        <p class="module-desc">
+                            Technical validation audit benchmarking raw track telemetry (Session TD10) against
+                            Simulink physics models and Python parameter identification scripts. Reports residual
+                            distributions, torque constants, and friction losses.
+                        </p>
+                        <div class="module-tags">
+                            <span class="module-tag">MATLAB / Simulink</span>
+                            <span class="module-tag">Python SciPy</span>
+                            <span class="module-tag">Error Residuals</span>
+                        </div>
+                    </div>
+                    <div class="module-footer">
+                        <span
+                            style="font-family:var(--mono);font-size:11px;color:var(--text-muted);">results/TD10_Audit_Validation.html</span>
+                        <a href="./simulator/RAKATA_KMHE_MATLAB_SIMULINK/RAKATA_TD10_ONLY/results/TD10_Audit_Validation.html"
+                            class="module-link">View Validation Audit &rarr;</a>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Figure Gallery -->
+        <section id="validation" class="figures-section">
+            <div class="section-title">
+                <span>Empirical System Identification & Model Verification</span>
+                <span class="section-tag">Scientific Evidence</span>
+            </div>
+
+            <!-- Figure 1 -->
+            <div class="figure-card">
+                <div class="figure-img-wrap">
+                    <img src="./simulator/RAKATA_KMHE_MATLAB_SIMULINK/RAKATA_TD10_ONLY/results/TD10_Validation.png"
+                        alt="TD10 Model Validation vs Experimental Track Data" loading="lazy">
+                </div>
+                <div class="figure-caption">
+                    <strong>Fig 1.</strong> Longitudinal vehicle velocity and electrical power model validation against
+                    experimental track telemetry (Session TD10). Model demonstrates close agreement across both
+                    pulse-acceleration and coasting phases, yielding a speed RMSE of 1.59 km/h and lap energy
+                    consumption MAE of 0.22 Wh.
+                </div>
+            </div>
+
+            <!-- Figure 2 -->
+            <div class="figure-card">
+                <div class="figure-img-wrap">
+                    <img src="./simulator/RAKATA_KMHE_MATLAB_SIMULINK/RAKATA_TD10_ONLY/results/TD10_Input_Audit.png"
+                        alt="Sensor Telemetry Input Audit" loading="lazy">
+                </div>
+                <div class="figure-caption">
+                    <strong>Fig 2.</strong> Raw telemetry signal integrity audit across timestamp continuity (&Delta;t),
+                    driver throttle input distributions, battery bus voltage sag profiles, and motor current telemetry.
+                </div>
+            </div>
+
+            <!-- Figure 3 -->
+            <div class="figure-card">
+                <div class="figure-img-wrap">
+                    <img src="./simulator/RAKATA_KMHE_MATLAB_SIMULINK/RAKATA_TD10_ONLY/results/historical_candidate_map_per_lap.png"
+                        alt="Historical Candidate Map Per Lap" loading="lazy">
+                </div>
+                <div class="figure-caption">
+                    <strong>Fig 3.</strong> Spatial trajectory reconstruction per candidate lap on the Sport Jabar
+                    Arcamanik circuit. Highlights lap start/finish coordinates, GPS position interpolation across
+                    cellular dead-zones, and segment candidate filtering.
+                </div>
+            </div>
+        </section>
+
+        <!-- System Architecture Overview -->
+        <section id="architecture">
+            <div class="section-title">
+                <span>Telemetry Ingestion & Pipeline Architecture</span>
+                <span class="section-tag">System Data Flow</span>
+            </div>
+            <table class="arch-table">
+                <thead>
+                    <tr>
+                        <th style="width:20%;">Layer</th>
+                        <th style="width:25%;">Component</th>
+                        <th style="width:25%;">Technology</th>
+                        <th style="width:30%;">Function</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>In-Vehicle Sensing</strong></td>
+                        <td>Cockpit CAN / ESP32 node</td>
+                        <td><span class="arch-badge">Hardware & C++</span></td>
+                        <td>Samples wheel speed, GPS coordinates, pack voltage, phase current, and driver throttle.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Telemetry Transport</strong></td>
+                        <td>Cellular MQTT Uplink</td>
+                        <td><span class="arch-badge">HiveMQ Cloud Broker</span></td>
+                        <td>Low-latency TLS-encrypted payload delivery to paddock and pit-lane monitoring stations.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Stream Processing</strong></td>
+                        <td>Node-RED Edge Flows</td>
+                        <td><span class="arch-badge">Node-RED / JSON</span></td>
+                        <td>Cockpit driver HUD rendering, GPS distance compensation (V5/V6), and CSV session logging.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Digital Twin & Modeling</strong></td>
+                        <td>Physical Parameter Estimation</td>
+                        <td><span class="arch-badge">MATLAB / Simulink / Python</span></td>
+                        <td>Non-linear least squares fit of drivetrain resistance, inertia, and motor efficiency
+                            constants.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Replay & Simulation</strong></td>
+                        <td>Web Workbench & Simulators</td>
+                        <td><span class="arch-badge">Three.js / Leaflet / Chart.js</span></td>
+                        <td>Driver post-run debrief, throttle map optimization, and multi-lap endurance race strategy
+                            planning.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div>
+                <strong>RAKATA Urban Concept EV Team</strong> &middot; Institut Teknologi Bandung
+            </div>
+            <div style="font-family:var(--mono);">
+                Kontes Mobil Hemat Energi (KMHE) 2026
+            </div>
+        </footer>
+
+    </div>
+
+</body>
+
+</html>

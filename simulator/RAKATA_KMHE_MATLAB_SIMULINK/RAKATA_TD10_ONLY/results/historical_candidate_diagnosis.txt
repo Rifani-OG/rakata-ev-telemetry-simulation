@@ -1,0 +1,5 @@
+Distance 221.34 / 9600.00 m; time 1500.00 s; energy 5.5325 Wh; stops 0 / 6.
+INCOMPLETE: energy is not a completed-attempt efficiency result. Missing 9378.66 m.
+STALL: near lap 1 station 221.34 m; zero throttle, speed below 0.2 km/h for last 10 s.
+Next zone starts at 390.00 m and cannot be reached at rest without propulsion.
+Estimated UNEJ grade at stall: 3.930%. Check strategy reachability and track/model uncertainty.

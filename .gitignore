@@ -1,0 +1,30 @@
+# MATLAB & Simulink
+slprj/
+*.slxc
+*.asv
+*.previous
+*.autosave
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+env/
+venv/
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Operating System
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*~

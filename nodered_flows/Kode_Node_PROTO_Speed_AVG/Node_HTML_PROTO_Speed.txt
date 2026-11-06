@@ -1,0 +1,39 @@
+<style>
+.proto-dash{font:14px 'Segoe UI',Arial,sans-serif;background:#080d14;color:#eff6ff;padding:8px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:100px 115px 75px 200px;gap:6px;box-sizing:border-box;width:100%}
+.proto-dash *{box-sizing:border-box}.proto-dash .box{border:1px solid #2c3b4d;background:#111b27;border-radius:9px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;text-align:center}.proto-dash .val{font-size:clamp(22px,2.5vw,36px);font-weight:800;font-variant-numeric:tabular-nums}.proto-dash .label{font-size:12px;color:#b0c1d3;letter-spacing:.6px}.proto-dash .small{font-size:14px}.proto-dash .cyan{color:#66d9ff}.proto-dash .orange{color:#ffb368}.proto-dash .green{color:#67e7ab}.proto-dash .wide{grid-column:span 2}.proto-dash .chart{grid-column:1/-1;display:block;padding:10px}.proto-dash svg{width:100%;height:137px;display:block}.proto-dash .chart-top{display:flex;justify-content:space-between;gap:8px}.proto-dash .note{font-size:11px;color:#b0c1d3}.proto-dash .tps{position:relative;overflow:hidden;isolation:isolate}.proto-dash .fill{position:absolute;inset:0;z-index:0;transform-origin:bottom;transform:scaleY(0);transition:transform .18s ease-out;background:linear-gradient(to top,rgba(255,117,26,.7),rgba(255,182,110,.28));pointer-events:none}.proto-dash .front{position:relative;z-index:1}.proto-dash .tps .val{color:white;text-shadow:0 1px 4px #000}
+@media(max-width:650px){.proto-dash{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none;grid-auto-rows:minmax(85px,auto)}.proto-dash .chart{min-height:200px}.proto-dash .wide{grid-column:span 1}}
+@media(prefers-reduced-motion:reduce){.proto-dash .fill{transition:none}}
+</style>
+<div class="proto-dash">
+<div class="box"><div class="val cyan">{{lapText}}</div><div class="label">CURRENT LAP</div></div>
+<div class="box"><div class="val" ng-style="{color:remainingColor}">{{remainingText}}</div><div class="label">REMAINING LAP</div></div>
+<div class="box"><div class="val">{{msg.payload.voltage || '0.0'}}</div><div class="label">VOLTAGE · V</div></div>
+<div class="box"><div class="val orange">{{msg.payload.lastLapTime || '--:--.---'}}</div><div class="label">LAST LAP</div></div>
+<div class="box"><div class="val">{{msg.payload.afr || 0}}</div><div class="label">AFR</div></div>
+<div class="box tps" role="meter" aria-label="Throttle TPS" aria-valuemin="0" aria-valuemax="100" ng-attr-aria-valuenow="{{tpsPct}}"><div class="fill" ng-style="{transform:'scaleY('+(tpsPct/100)+')'}" aria-hidden="true"></div><div class="front"><div class="val">{{tpsPct | number:0}}%</div><div class="label">THROTTLE · TPS</div></div></div>
+<div class="box"><div class="val">{{msg.payload.rpm || 0}}</div><div class="label">RPM</div></div>
+<div class="box"><div class="val">{{msg.payload.speed || '0.0'}}</div><div class="label">SPEED · km/h</div><div class="small green">AVG {{msg.payload.avgSpeed == null ? '—' : msg.payload.avgSpeed}} km/h</div></div>
+<div class="box wide"><div class="val">{{msg.payload.map_press || 0}}</div><div class="label">MAP · mmHg</div></div>
+<div class="box wide"><div class="val orange">{{msg.payload.eot || 0}}</div><div class="label">EOT · °C</div></div>
+<div class="box chart"><div class="chart-top"><span class="label">SPEED / AVG · SATU LAP</span><span class="note"><span class="cyan">━ SPEED</span> · <span class="green">━ AVG LAP</span> · km/h</span></div>
+<svg viewBox="0 0 850 155" role="img" aria-label="Kecepatan dan rata-rata kecepatan per lap">
+<g ng-repeat="g in grid"><line x1="42" x2="830" ng-attr-y1="{{g.y}}" ng-attr-y2="{{g.y}}" stroke="#293d51"/><text x="2" ng-attr-y="{{g.y+4}}" fill="#b0c1d3" font-size="12">{{g.label}}</text></g>
+<path ng-attr-d="{{speedPath}}" fill="none" stroke="#66d9ff" stroke-width="2"/><path ng-attr-d="{{avgPath}}" fill="none" stroke="#67e7ab" stroke-width="2.5"/>
+<g ng-repeat="t in ticks"><text ng-attr-x="{{t.x}}" y="148" fill="#b0c1d3" text-anchor="middle" font-size="12">{{t.label}}</text></g></svg>
+<div class="note">{{gpsStatus}} · AVG berbobot waktu GPS valid; jeda >2 dtk dikecualikan · cakupan {{msg.payload.speedCoverage || '0.0'}}%</div>
+</div></div>
+<script>
+(function(scope){
+let p={},received=Date.now();scope.tpsPct=0;scope.lapText='00:00.000';scope.remainingText='00:00.000';
+function fmt(seconds){const m=Math.round(Math.abs(seconds)*1000);return (seconds<0?'-':'')+String(Math.floor(m/60000)).padStart(2,'0')+':'+String(Math.floor(m/1000)%60).padStart(2,'0')+'.'+String(m%1000).padStart(3,'0');}
+function draw(elapsed){
+const points=p.speedHistory||[],xmax=Math.max(250,Math.ceil(elapsed/50)*50),ymax=Math.max(40,Math.ceil(points.reduce((v,q)=>Math.max(v,q.v),0)/10)*10),x=t=>42+t/xmax*788,y=v=>125-v/ymax*110;
+scope.grid=[0,1,2,3,4].map(i=>({y:y(ymax*i/4),label:ymax*i/4}));scope.ticks=[0,1,2,3,4,5].map(i=>{const s=Math.round(i*xmax/5);return {x:x(s),label:Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};});
+function path(key){let previous=null;return points.map(q=>{if(q[key]===null||!Number.isFinite(q[key])){previous=null;return '';}const head=!previous||q.t-previous.t>2?'M':'L';previous=q;return head+x(q.t).toFixed(2)+','+y(q[key]).toFixed(2);}).join(' ');}
+scope.speedPath=path('v');scope.avgPath=path('avg');
+}
+function tick(){const since=(Date.now()-received)/1000,elapsed=p.isRunning?(Number(p.elapsedSec)||0)+since:0;scope.lapText=p.isRunning?fmt(elapsed):'00:00.000';const remaining=(Number(p.effectiveTarget)||200)-elapsed;scope.remainingText=p.isRunning?fmt(remaining):'00:00.000';scope.remainingColor=!p.isRunning?'#8091a5':remaining<=0?'#ff647c':remaining<60?'#ffd36b':'#67e7ab';scope.gpsStatus=p.gpsAge==null?'Menunggu GPS':Number(p.gpsAge)+since>2?'GPS terlambat / terputus':'GPS LIVE';}
+scope.$watch('msg',function(m){if(!m||!m.payload)return;p=m.payload;received=Date.now();const v=Number(p.tps);scope.tpsPct=Number.isFinite(v)?Math.max(0,Math.min(100,v)):0;tick();draw(Number(p.elapsedSec)||0);});
+const timer=setInterval(function(){scope.$evalAsync(tick);},100);scope.$on('$destroy',function(){clearInterval(timer);});draw(0);
+})(scope);
+</script>

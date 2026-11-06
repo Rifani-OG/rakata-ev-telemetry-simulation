@@ -1,0 +1,230 @@
+[
+    {
+        "id": "6ce142486c095ac3",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "e3a5144cb25556d0",
+        "type": "tcp in",
+        "z": "6ce142486c095ac3",
+        "name": "",
+        "server": "client",
+        "host": "localhost",
+        "port": "9000",
+        "datamode": "stream",
+        "datatype": "utf8",
+        "newline": "\\n",
+        "topic": "",
+        "trim": false,
+        "base64": false,
+        "tls": "",
+        "x": 150,
+        "y": 280,
+        "wires": [
+            [
+                "c2eacd70709260c0",
+                "15ea9227da7c1302"
+            ]
+        ]
+    },
+    {
+        "id": "6f6b52fbe2748ba4",
+        "type": "mqtt out",
+        "z": "6ce142486c095ac3",
+        "name": "mqtt",
+        "topic": "Paddock",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "948201ee4ca4cafc",
+        "x": 590,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "c2eacd70709260c0",
+        "type": "function",
+        "z": "6ce142486c095ac3",
+        "name": "function 2",
+        "func": "// Teruskan payload asli tanpa perubahan\nmsg.payload = msg.payload;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 240,
+        "wires": [
+            [
+                "6f6b52fbe2748ba4"
+            ]
+        ]
+    },
+    {
+        "id": "15ea9227da7c1302",
+        "type": "function",
+        "z": "6ce142486c095ac3",
+        "name": "function 4",
+        "func": "// =======================================================\n// 0. INISIALISASI STATE (jika belum ada)\n// =======================================================\nif (flow.get(\"isRunning\") === undefined) flow.set(\"isRunning\", false);\nif (!flow.get(\"clockOffset\")) flow.set(\"clockOffset\", 0);\nif (!flow.get(\"lapStartTime\")) flow.set(\"lapStartTime\", Date.now());\nif (!flow.get(\"carryOver\")) flow.set(\"carryOver\", 0);\nif (!flow.get(\"energyOffset\")) flow.set(\"energyOffset\", 0);\nif (!flow.get(\"distanceOffset\")) flow.set(\"distanceOffset\", 0);\nif (!flow.get(\"lastLapTime\")) flow.set(\"lastLapTime\", \"--:--.---\");\nif (!flow.get(\"lastLapEnergy\")) flow.set(\"lastLapEnergy\", \"0.00\");\nif (!flow.get(\"lastLapKmPerKwh\")) flow.set(\"lastLapKmPerKwh\", \"0.00\");\n\n// =======================================================\n// 1. TANGANI PERINTAH DARI MQTT (dari Laptop)\n// =======================================================\nif (msg.payload && msg.payload.cmd) {\n    let cmd = msg.payload;\n    if (cmd.cmd === \"START\") {\n        // Reset semua state di HP, set offset berdasarkan timestamp dari laptop\n        let offset = cmd.timestamp - Date.now();\n        flow.set(\"clockOffset\", offset);\n        flow.set(\"lapStartTime\", cmd.timestamp);\n        flow.set(\"carryOver\", 0);\n        flow.set(\"energyOffset\", cmd.energyOffset || 0);\n        flow.set(\"distanceOffset\", cmd.distanceOffset || 0);\n        flow.set(\"lastLapTime\", \"--:--.---\");\n        flow.set(\"lastLapEnergy\", \"0.00\");\n        flow.set(\"lastLapKmPerKwh\", \"0.00\");\n        flow.set(\"isRunning\", true);   // ← SET RUNNING\n        return [null, null, null];\n    }\n    else if (cmd.cmd === \"LAP\") {\n        // Perbarui offset setiap kali LAP (untuk akurasi)\n        let newOffset = cmd.timestamp - Date.now();\n        flow.set(\"clockOffset\", newOffset);\n\n        let targetTime = flow.get(\"targetTime\") || 200;\n        let startTime = flow.get(\"lapStartTime\");\n        if (!startTime) {\n            flow.set(\"lapStartTime\", cmd.timestamp);\n            flow.set(\"carryOver\", 0);\n            return [null, null, null];\n        }\n        let elapsed = (cmd.timestamp - startTime) / 1000;\n        let remaining = targetTime - elapsed;\n        let carryOver = flow.get(\"carryOver\") || 0;\n        carryOver += remaining;\n        // Batasi carryOver\n        if (carryOver < 1 - targetTime) {\n            carryOver = 1 - targetTime;\n        }\n        flow.set(\"carryOver\", carryOver);\n\n        let lastEnergy = flow.get(\"lastEnergyRaw\") || 0;\n        let lastDistance = flow.get(\"lastDistance\") || 0;\n        let energyOffset = cmd.energyOffset || 0;\n        let distanceOffset = cmd.distanceOffset || 0;\n        let lapEnergy = Math.max(0, lastEnergy - energyOffset);\n        let lapDistance = Math.max(0, lastDistance - distanceOffset);\n        let kmPerKwh = (lapDistance > 0 && lapEnergy > 0) ? (lapDistance / (lapEnergy / 1000)) : 0;\n\n        let lapTimeSec = elapsed;\n        let m = Math.floor(lapTimeSec / 60);\n        let s = Math.floor(lapTimeSec % 60);\n        let ms = Math.floor((lapTimeSec % 1) * 1000);\n        let lapStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;\n\n        flow.set(\"lastLapTime\", lapStr);\n        flow.set(\"lastLapEnergy\", lapEnergy.toFixed(2));\n        flow.set(\"lastLapKmPerKwh\", kmPerKwh.toFixed(2));\n\n        flow.set(\"energyOffset\", lastEnergy);\n        flow.set(\"distanceOffset\", lastDistance);\n        flow.set(\"lapStartTime\", cmd.timestamp);\n\n        let totalKmPerKwh = (lastDistance > 0 && lastEnergy > 0) ? (lastDistance / (lastEnergy / 1000)) : 0;\n\n        let lapResult = {\n            type: \"LAP_RESULT\",\n            lapTime: lapStr,\n            lapEnergy: lapEnergy.toFixed(2),\n            lapDistance: lapDistance.toFixed(3),\n            kmPerKwh: kmPerKwh.toFixed(2),\n            totalEnergy: lastEnergy.toFixed(2),\n            totalDistance: lastDistance.toFixed(3),\n            totalKmPerKwh: totalKmPerKwh.toFixed(2),\n            timestamp: Date.now()\n        };\n        return [null, null, { payload: lapResult }];\n    }\n    else if (cmd.cmd === \"RESET\") {\n        // Reset HP berdasarkan perintah dari laptop\n        flow.set(\"lapStartTime\", cmd.timestamp);\n        flow.set(\"carryOver\", 0);\n        let offset = cmd.timestamp - Date.now();\n        flow.set(\"clockOffset\", offset);\n        flow.set(\"energyOffset\", flow.get(\"lastEnergyRaw\") || 0);\n        flow.set(\"distanceOffset\", flow.get(\"lastDistance\") || 0);\n        flow.set(\"lastLapTime\", \"--:--.---\");\n        flow.set(\"lastLapEnergy\", \"0.00\");\n        flow.set(\"lastLapKmPerKwh\", \"0.00\");\n        flow.set(\"isRunning\", false);   // ← SET NOT RUNNING\n        return [null, null, null];\n    }\n}\n\n// =======================================================\n// 2. PARSING DATA CSV (11 FIELD) UNTUK DASHBOARD HP\n// =======================================================\nlet str = msg.payload.toString().trim();\nlet parts = str.split(\",\");\nif (parts.length < 11) return [null, null, null];\n\nlet lat = parseFloat(parts[0]) || 0;\nlet lng = parseFloat(parts[1]) || 0;\nlet speed = parseFloat(parts[2]) || 0;\nlet sat = parseInt(parts[3]) || 0;\nlet throttle = parseInt(parts[4]) || 0;\nlet current_mA = parseFloat(parts[5]) || 0;\nlet voltage = parseFloat(parts[6]) || 0;\nlet power = parseFloat(parts[7]) || 0;\nlet energyRaw = parseFloat(parts[8]) || 0;\nlet distance = parseFloat(parts[9]) || 0;\nlet millis = parseFloat(parts[10]) || 0;\n\nlet current_A = current_mA / 1000.0;\n\nflow.set(\"lastEnergyRaw\", energyRaw);\nflow.set(\"lastDistance\", distance);\n\n// --- Energi ---\nlet energyOffset = flow.get(\"energyOffset\") || 0;\nlet energyDisplay = Math.max(0, energyRaw - energyOffset);\nlet targetEnergy = 7;\nlet remainingEnergy = Math.max(0, targetEnergy - energyDisplay);\n\n// --- Speed gauge ---\nlet maxSpeed = 50;\nlet speedPct = Math.min((speed / maxSpeed) * 100, 100);\n\n// --- Timer lap dengan carryOver (hanya jika running) ---\nlet isRunning = flow.get(\"isRunning\") || false;\nlet currentLap = \"00:00.000\";\nlet countdown = \"00:00.000\";\nlet countdownColor = \"#666\";\n\nif (isRunning) {\n    let targetTime = flow.get(\"targetTime\") || 200;\n    let carryOver = flow.get(\"carryOver\") || 0;\n    let effectiveTarget = Math.max(1, targetTime + carryOver);\n    let startTime = flow.get(\"lapStartTime\");\n    if (!startTime) {\n        startTime = Date.now();\n        flow.set(\"lapStartTime\", startTime);\n    }\n    let offset = flow.get(\"clockOffset\") || 0;\n    let correctedNow = Date.now() + offset;\n    let elapsedSec = (correctedNow - startTime) / 1000;\n    let remainingSec = effectiveTarget - elapsedSec;\n\n    function fmtTime(sec) {\n        let m = Math.floor(Math.abs(sec) / 60);\n        let s = Math.floor(Math.abs(sec) % 60);\n        let ms = Math.floor((Math.abs(sec) % 1) * 1000);\n        let sign = sec < 0 ? '-' : '';\n        return `${sign}${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;\n    }\n    currentLap = fmtTime(elapsedSec);\n    countdown = fmtTime(remainingSec);\n    countdownColor = remainingSec <= 0 ? \"#ff0044\" : (remainingSec <= 60 ? \"#ffff00\" : \"#00ff00\");\n}\n\n// --- Output dashboard HP (Output 1) ---\nlet msgTemplate = {\n    payload: {\n        speed: speed.toFixed(0),\n        speedPct: speedPct.toFixed(1),\n        current: current_A.toFixed(2),\n        power: power.toFixed(0),\n        energy: energyDisplay.toFixed(2),\n        remEnergy: remainingEnergy.toFixed(2),\n        throttle: throttle,\n        voltage: voltage.toFixed(1),\n        currentLap: currentLap,\n        countdown: countdown,\n        countdownColor: countdownColor,\n        lastLapTime: flow.get(\"lastLapTime\") || \"--:--.---\",\n        lastLapEnergy: flow.get(\"lastLapEnergy\") || \"0.00\",\n        lastLapKmPerKwh: flow.get(\"lastLapKmPerKwh\") || \"0.00\",\n        isRunning: isRunning   // ← tambahkan flag ke payload\n    }\n};\n\n// --- Peta (Output 2) ---\nlet msgMap = {\n    payload: { name: \"RAKATA_EV\", lat: lat, lon: lng, heading: 0, icon: \"fa-location-arrow\", iconColor: \"red\", track: true, ttl: 600 }\n};\n\n// Output 3 = null (kecuali saat menerima perintah)\nreturn [msgTemplate, msgMap, null];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 380,
+        "wires": [
+            [
+                "889bcf1e0d949b62"
+            ],
+            [],
+            [
+                "8ce8ebd07362aa9c"
+            ]
+        ]
+    },
+    {
+        "id": "889bcf1e0d949b62",
+        "type": "ui_template",
+        "z": "6ce142486c095ac3",
+        "group": "ebea703c4a31781d",
+        "name": "",
+        "order": 1,
+        "width": 24,
+        "height": 11,
+        "format": "<style>\n  /* Reset & Full height */\n  html,\n  body {\n    margin: 0;\n    padding: 0;\n    height: 100%;\n    background-color: #030303;\n  }\n\n  .f1-dash {\n    background-color: #030303;\n    font-family: 'Segoe UI', Arial, sans-serif;\n    padding: 6px;\n    display: grid;\n    grid-template-columns: 1fr 1fr; /* 2 Kolom */\n    grid-template-rows: 1fr 1.5fr 1.5fr; /* Baris pertama untuk throttle, sisanya lebih besar */\n    gap: 8px;\n    width: 100%;\n    height: 100vh;\n    box-sizing: border-box;\n  }\n\n  .f1-box {\n    border: 2px solid #222;\n    background-color: #0f0f0f;\n    display: flex;\n    flex-direction: column;\n    justify-content: center;\n    align-items: center;\n    border-radius: 8px;\n    padding: 6px 10px;\n    text-align: center;\n    box-shadow: inset 0px 0px 12px rgba(0, 0, 0, 0.8);\n    overflow: hidden;\n  }\n\n  /* Layout Placements */\n  .throttle-large {\n    grid-column: span 2; /* Memanjang dari ujung ke ujung */\n    grid-row: 1;\n  }\n\n  .speed-large {\n    grid-column: 1; /* Sisi kiri */\n    grid-row: span 2; /* Mengambil sisa tinggi penuh di bawah throttle */\n  }\n\n  /* Font sizes */\n  .val-huge {\n    font-size: clamp(50px, 10vw, 120px); /* Angka Speed sedikit diperbesar */\n    font-weight: 900;\n    line-height: 1;\n  }\n\n  /* Waktu jauh lebih besar */\n  .val-large {\n    font-size: clamp(45px, 7vw, 95px); /* Diperbesar signifikan untuk Waktu */\n    font-weight: 900;\n    line-height: 1.1;\n  }\n\n  .f1-label {\n    font-size: clamp(10px, 1.2vw, 16px);\n    font-weight: 800;\n    color: #666;\n    letter-spacing: 1px;\n    margin-top: 8px;\n    text-transform: uppercase;\n  }\n\n  /* Tulisan KM/JAM khusus dibuat jauh lebih besar */\n  .speed-label {\n    font-size: clamp(20px, 3vw, 36px); \n    font-weight: 800;\n    color: #888;\n    letter-spacing: 2px;\n    margin-top: 12px;\n    text-transform: uppercase;\n  }\n\n  /* Gauge speed - dibuat responsif agar lebih rapi */\n  .gauge-ring {\n    width: clamp(140px, 25vw, 260px);\n    aspect-ratio: 1;\n    border-radius: 50%;\n    display: flex;\n    justify-content: center;\n    align-items: center;\n    margin-bottom: 4px;\n  }\n\n  .gauge-center {\n    width: 82%;\n    height: 82%;\n    background-color: #0f0f0f;\n    border-radius: 50%;\n    display: flex;\n    justify-content: center;\n    align-items: center;\n    box-shadow: inset 0px 0px 8px rgba(0, 0, 0, 0.9);\n  }\n\n  /* ---- THROTTLE BAR (horizontal) ---- */\n  .throttle-bar-container {\n    width: 100%;\n    max-width: 95%;\n    height: 30px; /* Sedikit lebih tebal */\n    background: #222;\n    border-radius: 10px;\n    overflow: hidden;\n    margin-top: 4px;\n    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.8);\n  }\n\n  .throttle-bar-fill {\n    height: 100%;\n    border-radius: 10px;\n    background: linear-gradient(90deg, #00ff00, #ffcc00, #ff3300);\n    transition: width 0.15s ease-out;\n    width: 0%;\n  }\n\n  .throttle-value {\n    font-size: clamp(24px, 3vw, 40px);\n    font-weight: 900;\n    color: #ff6600;\n    text-shadow: 0 0 8px rgba(255, 102, 0, 0.3);\n    margin-bottom: 4px;\n  }\n\n  .txt-white {\n    color: #ffffff;\n  }\n</style>\n\n<div class=\"f1-dash\">\n\n  <!-- BARIS 1: THROTTLE (Atas, Memanjang Penuh) -->\n  <div class=\"f1-box throttle-large\">\n    <div style=\"width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;\">\n      <div class=\"throttle-value\">{{ msg.payload.throttle || '0' }}%</div>\n      <div class=\"throttle-bar-container\">\n        <div class=\"throttle-bar-fill\" style=\"width: {{ msg.payload.throttle || 0 }}%;\">\n        </div>\n      </div>\n      <div class=\"f1-label\" style=\"margin-top: 6px;\">THROTTLE</div>\n    </div>\n  </div>\n\n  <!-- BARIS 2-3 KIRI: SPEED -->\n  <div class=\"f1-box speed-large\">\n    <div class=\"gauge-ring\" style=\"background: conic-gradient(#ffffff {{ msg.payload.speedPct || 0 }}%, #222 0%);\">\n      <div class=\"gauge-center\">\n        <div class=\"val-huge txt-white\">{{ msg.payload.speed || '0' }}</div>\n      </div>\n    </div>\n    <!-- Tulisan KM/JAM dengan class baru yang lebih besar -->\n    <div class=\"speed-label\">KM/JAM</div>\n  </div>\n\n  <!-- BARIS 2 KANAN: REMAINING LAP TIME (Di Atas) -->\n  <div class=\"f1-box\">\n    <div class=\"val-large\"\n      style=\"color: {{ msg.payload.isRunning ? (msg.payload.countdownColor || '#00ff00') : '#555' }};\">\n      {{ msg.payload.isRunning ? msg.payload.countdown : '--:--.---' }}\n    </div>\n    <div class=\"f1-label\">REM. LAP</div>\n  </div>\n\n  <!-- BARIS 3 KANAN: CURRENT LAP TIME (Di Bawah) -->\n  <div class=\"f1-box\">\n    <div class=\"val-large\" style=\"color: {{ msg.payload.isRunning ? '#00c3ff' : '#555' }};\">\n      {{ msg.payload.isRunning ? msg.payload.currentLap : '--:--.---' }}\n    </div>\n    <div class=\"f1-label\">CURRENT LAP</div>\n  </div>\n\n</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 660,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6eb25bb1d00ea378",
+        "type": "mqtt in",
+        "z": "6ce142486c095ac3",
+        "name": "",
+        "topic": "control",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "948201ee4ca4cafc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 310,
+        "y": 500,
+        "wires": [
+            [
+                "15ea9227da7c1302"
+            ]
+        ]
+    },
+    {
+        "id": "8ce8ebd07362aa9c",
+        "type": "mqtt out",
+        "z": "6ce142486c095ac3",
+        "name": "lap result",
+        "topic": "rakata/lap_result",
+        "qos": "0",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "948201ee4ca4cafc",
+        "x": 660,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "948201ee4ca4cafc",
+        "type": "mqtt-broker",
+        "name": "buatTD02",
+        "broker": "<YOUR_HIVEMQ_CLUSTER_URL>.s1.eu.hivemq.cloud",
+        "port": "8883",
+        "tls": "9dac2f33980d8f8f",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "ebea703c4a31781d",
+        "type": "ui_group",
+        "name": "TD2.0",
+        "tab": "b50d0e5418171d91",
+        "order": 1,
+        "disp": false,
+        "width": 24,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "9dac2f33980d8f8f",
+        "type": "tls-config",
+        "name": "",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "",
+        "servername": "<YOUR_HIVEMQ_CLUSTER_URL>.s1.eu.hivemq.cloud",
+        "verifyservercert": true,
+        "alpnprotocol": ""
+    },
+    {
+        "id": "b50d0e5418171d91",
+        "type": "ui_tab",
+        "name": "TD-2.0",
+        "icon": "dashboard",
+        "order": 1,
+        "disabled": false,
+        "hidden": true
+    },
+    {
+        "id": "49c1927492738d76",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6"
+        }
+    }
+]

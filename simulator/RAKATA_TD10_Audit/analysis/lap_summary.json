@@ -1,0 +1,494 @@
+[
+  {
+    "lap": 1,
+    "time": 231.202,
+    "energy": 8.048,
+    "energy_integrated": 8.044815999999999,
+    "distance": 1427.0,
+    "quality": "boundary",
+    "end_speed": 4.03,
+    "pulses": 3,
+    "max_speed": 35.25,
+    "phases": [
+      {
+        "start_m": 2.0,
+        "end_m": 226.0,
+        "start_s": 5.64,
+        "end_s": 38.52,
+        "v_start": 3.39,
+        "v_end": 35.25,
+        "energy": 4.359
+      },
+      {
+        "start_m": 1040.0,
+        "end_m": 1158.0,
+        "start_s": 147.67,
+        "end_s": 165.9,
+        "v_start": 18.93,
+        "v_end": 31.85,
+        "energy": 2.2316000000000003
+      },
+      {
+        "start_m": 1308.0,
+        "end_m": 1347.0,
+        "start_s": 189.02,
+        "end_s": 197.21,
+        "v_start": 18.49,
+        "v_end": 16.62,
+        "energy": 0.5747999999999998
+      }
+    ]
+  },
+  {
+    "lap": 2,
+    "time": 212.196,
+    "energy": 7.6093000000000615,
+    "energy_integrated": 7.605500409722223,
+    "distance": 1477.0,
+    "quality": "boundary",
+    "end_speed": 5.5,
+    "pulses": 3,
+    "max_speed": 34.35,
+    "phases": [
+      {
+        "start_m": 3.0,
+        "end_m": 184.0,
+        "start_s": 2.66,
+        "end_s": 27.44,
+        "v_start": 5.63,
+        "v_end": 33.85,
+        "energy": 3.7162000000000077
+      },
+      {
+        "start_m": 902.0,
+        "end_m": 981.0,
+        "start_s": 120.26,
+        "end_s": 131.4,
+        "v_start": 20.26,
+        "v_end": 32.14,
+        "energy": 1.3241999999999994
+      },
+      {
+        "start_m": 1197.0,
+        "end_m": 1264.0,
+        "start_s": 160.54,
+        "end_s": 170.86,
+        "v_start": 19.59,
+        "v_end": 28.34,
+        "energy": 1.4616999999999987
+      }
+    ]
+  },
+  {
+    "lap": 3,
+    "time": 211.103,
+    "energy": 7.625100000000142,
+    "energy_integrated": 7.6221385305555565,
+    "distance": 1425.0,
+    "quality": "boundary",
+    "end_speed": 6.67,
+    "pulses": 2,
+    "max_speed": 34.92,
+    "phases": [
+      {
+        "start_m": 2.0,
+        "end_m": 159.0,
+        "start_s": 2.56,
+        "end_s": 23.86,
+        "v_start": 3.3,
+        "v_end": 33.41,
+        "energy": 3.5866000000000007
+      },
+      {
+        "start_m": 983.0,
+        "end_m": 1163.0,
+        "start_s": 140.25,
+        "end_s": 163.2,
+        "v_start": 19.43,
+        "v_end": 32.26,
+        "energy": 3.313899999999986
+      }
+    ]
+  },
+  {
+    "lap": 4,
+    "time": 214.878,
+    "energy": 7.676400000000143,
+    "energy_integrated": 7.678651938888888,
+    "distance": 1431.0,
+    "quality": "boundary",
+    "end_speed": 6.14,
+    "pulses": 2,
+    "max_speed": 34.97,
+    "phases": [
+      {
+        "start_m": 3.0,
+        "end_m": 147.0,
+        "start_s": 3.07,
+        "end_s": 22.55,
+        "v_start": 6.27,
+        "v_end": 34.97,
+        "energy": 3.491699999999998
+      },
+      {
+        "start_m": 1036.0,
+        "end_m": 1192.0,
+        "start_s": 154.29,
+        "end_s": 174.86,
+        "v_start": 17.12,
+        "v_end": 34.3,
+        "energy": 3.365199999999998
+      }
+    ]
+  },
+  {
+    "lap": 5,
+    "time": 217.915,
+    "energy": 7.45840000000068,
+    "energy_integrated": 7.454419311111111,
+    "distance": 1439.0,
+    "quality": "boundary",
+    "end_speed": 4.52,
+    "pulses": 2,
+    "max_speed": 34.78,
+    "phases": [
+      {
+        "start_m": 0.0,
+        "end_m": 129.0,
+        "start_s": 2.36,
+        "end_s": 20.79,
+        "v_start": 3.29,
+        "v_end": 34.65,
+        "energy": 3.378
+      },
+      {
+        "start_m": 1057.0,
+        "end_m": 1210.0,
+        "start_s": 156.8,
+        "end_s": 177.07,
+        "v_start": 17.06,
+        "v_end": 33.78,
+        "energy": 3.2715000000000316
+      }
+    ]
+  },
+  {
+    "lap": 6,
+    "time": 215.166,
+    "energy": 7.481400000000001,
+    "energy_integrated": 7.482097165277778,
+    "distance": 1451.0,
+    "quality": "boundary",
+    "end_speed": 10.1,
+    "pulses": 3,
+    "max_speed": 34.62,
+    "phases": [
+      {
+        "start_m": 0.0,
+        "end_m": 93.0,
+        "start_s": 2.65,
+        "end_s": 16.58,
+        "v_start": 4.51,
+        "v_end": 33.18,
+        "energy": 2.732199999999999
+      },
+      {
+        "start_m": 812.0,
+        "end_m": 943.0,
+        "start_s": 119.24,
+        "end_s": 136.53,
+        "v_start": 18.38,
+        "v_end": 34.32,
+        "energy": 2.1888000000000005
+      },
+      {
+        "start_m": 1203.0,
+        "end_m": 1266.0,
+        "start_s": 171.64,
+        "end_s": 181.78,
+        "v_start": 16.23,
+        "v_end": 28.32,
+        "energy": 1.4529999999999959
+      }
+    ]
+  },
+  {
+    "lap": 7,
+    "time": 235.311,
+    "energy": 6.654699999999998,
+    "energy_integrated": 6.657906345833333,
+    "distance": 1435.0,
+    "quality": "boundary",
+    "end_speed": 5.52,
+    "pulses": 2,
+    "max_speed": 34.15,
+    "phases": [
+      {
+        "start_m": 1.0,
+        "end_m": 94.0,
+        "start_s": 2.05,
+        "end_s": 16.5,
+        "v_start": 1.4,
+        "v_end": 32.13,
+        "energy": 2.7941000000000003
+      },
+      {
+        "start_m": 1029.0,
+        "end_m": 1161.0,
+        "start_s": 165.06,
+        "end_s": 182.89,
+        "v_start": 15.91,
+        "v_end": 33.8,
+        "energy": 2.951599999999999
+      }
+    ]
+  },
+  {
+    "lap": 8,
+    "time": 234.713,
+    "energy": 6.8324,
+    "energy_integrated": 6.833664425,
+    "distance": 1445.0,
+    "quality": "boundary",
+    "end_speed": 6.12,
+    "pulses": 2,
+    "max_speed": 34.28,
+    "phases": [
+      {
+        "start_m": 1.0,
+        "end_m": 94.0,
+        "start_s": 3.79,
+        "end_s": 17.63,
+        "v_start": 5.53,
+        "v_end": 32.33,
+        "energy": 2.851299999999995
+      },
+      {
+        "start_m": 1036.0,
+        "end_m": 1169.0,
+        "start_s": 162.67,
+        "end_s": 180.58,
+        "v_start": 15.97,
+        "v_end": 32.75,
+        "energy": 2.9962000000000018
+      }
+    ]
+  },
+  {
+    "lap": 9,
+    "time": 228.558,
+    "energy": 6.941000000001615,
+    "energy_integrated": 6.939970177777777,
+    "distance": 1430.0,
+    "quality": "boundary",
+    "end_speed": 7.45,
+    "pulses": 2,
+    "max_speed": 34.47,
+    "phases": [
+      {
+        "start_m": 2.0,
+        "end_m": 141.0,
+        "start_s": 3.79,
+        "end_s": 26.94,
+        "v_start": 1.82,
+        "v_end": 32.1,
+        "energy": 3.1056000000000097
+      },
+      {
+        "start_m": 1018.0,
+        "end_m": 1175.0,
+        "start_s": 159.33,
+        "end_s": 179.62,
+        "v_start": 17.94,
+        "v_end": 33.37,
+        "energy": 3.1333000000000197
+      }
+    ]
+  },
+  {
+    "lap": 10,
+    "time": 229.763,
+    "energy": 7.117500000000817,
+    "energy_integrated": 7.120205402777778,
+    "distance": 1434.0,
+    "quality": "strict",
+    "end_speed": 2.98,
+    "pulses": 2,
+    "max_speed": 33.77,
+    "phases": [
+      {
+        "start_m": 4.0,
+        "end_m": 159.0,
+        "start_s": 2.66,
+        "end_s": 26.72,
+        "v_start": 5.62,
+        "v_end": 32.45,
+        "energy": 3.250599999999963
+      },
+      {
+        "start_m": 1040.0,
+        "end_m": 1182.0,
+        "start_s": 163.04,
+        "end_s": 181.97,
+        "v_start": 15.28,
+        "v_end": 32.07,
+        "energy": 3.034399999999934
+      }
+    ]
+  },
+  {
+    "lap": 11,
+    "time": 237.62,
+    "energy": 6.829100000001048,
+    "energy_integrated": 6.830297441666666,
+    "distance": 1441.0,
+    "quality": "boundary",
+    "end_speed": 7.43,
+    "pulses": 2,
+    "max_speed": 34.16,
+    "phases": [
+      {
+        "start_m": 0.0,
+        "end_m": 141.0,
+        "start_s": 3.79,
+        "end_s": 27.24,
+        "v_start": 4.22,
+        "v_end": 31.71,
+        "energy": 2.980600000000038
+      },
+      {
+        "start_m": 1029.0,
+        "end_m": 1169.0,
+        "start_s": 165.82,
+        "end_s": 183.84,
+        "v_start": 15.34,
+        "v_end": 33.62,
+        "energy": 2.9699000000000098
+      }
+    ]
+  },
+  {
+    "lap": 12,
+    "time": 233.002,
+    "energy": 6.725600000001208,
+    "energy_integrated": 6.726722347222222,
+    "distance": 1440.0,
+    "quality": "boundary",
+    "end_speed": 7.28,
+    "pulses": 2,
+    "max_speed": 35.21,
+    "phases": [
+      {
+        "start_m": 4.0,
+        "end_m": 145.0,
+        "start_s": 2.97,
+        "end_s": 28.21,
+        "v_start": 5.39,
+        "v_end": 32.28,
+        "energy": 2.7589000000000823
+      },
+      {
+        "start_m": 1028.0,
+        "end_m": 1162.0,
+        "start_s": 163.15,
+        "end_s": 180.36,
+        "v_start": 16.86,
+        "v_end": 34.73,
+        "energy": 2.940200000000033
+      }
+    ]
+  },
+  {
+    "lap": 13,
+    "time": 232.09,
+    "energy": 7.192200000000938,
+    "energy_integrated": 7.190504270833334,
+    "distance": 1434.0,
+    "quality": "strict",
+    "end_speed": 0.84,
+    "pulses": 2,
+    "max_speed": 34.32,
+    "phases": [
+      {
+        "start_m": 1.0,
+        "end_m": 185.0,
+        "start_s": 5.02,
+        "end_s": 36.35,
+        "v_start": 4.14,
+        "v_end": 32.02,
+        "energy": 3.396100000000061
+      },
+      {
+        "start_m": 1017.0,
+        "end_m": 1145.0,
+        "start_s": 161.46,
+        "end_s": 179.08,
+        "v_start": 16.27,
+        "v_end": 33.77,
+        "energy": 2.977199999999982
+      }
+    ]
+  },
+  {
+    "lap": 14,
+    "time": 220.313,
+    "energy": 7.50430000000074,
+    "energy_integrated": 7.500598299999999,
+    "distance": 1423.0,
+    "quality": "boundary",
+    "end_speed": 12.97,
+    "pulses": 2,
+    "max_speed": 35.14,
+    "phases": [
+      {
+        "start_m": 1.0,
+        "end_m": 134.0,
+        "start_s": 3.89,
+        "end_s": 22.64,
+        "v_start": 4.31,
+        "v_end": 35.14,
+        "energy": 3.4396000000000697
+      },
+      {
+        "start_m": 1026.0,
+        "end_m": 1165.0,
+        "start_s": 152.39,
+        "end_s": 170.82,
+        "v_start": 16.39,
+        "v_end": 33.86,
+        "energy": 3.2001000000000914
+      }
+    ]
+  },
+  {
+    "lap": 15,
+    "time": 220.566,
+    "energy": 7.6592999999995754,
+    "energy_integrated": 7.658509838888889,
+    "distance": 1449.0,
+    "quality": "strict",
+    "end_speed": 1.98,
+    "pulses": 2,
+    "max_speed": 34.01,
+    "phases": [
+      {
+        "start_m": 2.0,
+        "end_m": 204.0,
+        "start_s": 2.56,
+        "end_s": 30.67,
+        "v_start": 5.64,
+        "v_end": 33.52,
+        "energy": 3.7611000000000274
+      },
+      {
+        "start_m": 1053.0,
+        "end_m": 1177.0,
+        "start_s": 155.22,
+        "end_s": 172.23,
+        "v_start": 15.63,
+        "v_end": 33.93,
+        "energy": 3.045900000000074
+      }
+    ]
+  }
+]

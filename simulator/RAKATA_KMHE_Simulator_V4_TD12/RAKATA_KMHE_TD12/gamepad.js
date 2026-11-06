@@ -1,0 +1,8 @@
+(function(root){'use strict';const clip=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+class GamepadControl{constructor(){this.pad=null;this.enabled=false;this.gasButton=7;this.brakeButton=6;this.steerAxis=0;this.gasAxis=-1;this.brakeAxis=-1;this.invert=false;this.status='Klik Aktifkan gamepad, lalu tekan tombol pada controller.';}
+ enable(){this.enabled=true;return this.poll();}
+ find(){const pads=Array.from(navigator.getGamepads?.()||[]).filter(Boolean);this.pad=pads[0]||null;return this.pad;}
+ poll(){if(!this.enabled)return {throttle:0,brake:0,steer:0,connected:false};const p=this.find();if(!p){this.status='Gamepad belum terdeteksi. Hubungkan lalu tekan tombol/trigger.';return {throttle:0,brake:0,steer:0,connected:false};}let gas=p.buttons[this.gasButton]?.value||0,brake=p.buttons[this.brakeButton]?.value||0;if(this.gasAxis>=0)gas=(p.axes[this.gasAxis]+1)/2;if(this.brakeAxis>=0)brake=(p.axes[this.brakeAxis]+1)/2;let steer=p.axes[this.steerAxis]||0;if(this.invert)steer=-steer;if(Math.abs(steer)<.12)steer=0;else steer=Math.sign(steer)*(Math.abs(steer)-.12)/.88;this.status=p.id+' · gas '+Math.round(clip(gas)*100)+'% · rem '+Math.round(clip(brake)*100)+'% · steer '+steer.toFixed(2);return {throttle:clip(gas)*100,brake:clip(brake),steer:clip(steer,-1,1),connected:true};}
+ snapshot(){const p=this.find();return p?{id:p.id,mapping:p.mapping,buttons:p.buttons.map((b,i)=>({i,value:b.value})).filter(x=>x.value>.02),axes:p.axes.map((value,i)=>({i,value}))}:null;}}
+root.RakataGamepad={GamepadControl};if(typeof module!=='undefined')module.exports=root.RakataGamepad;
+})(typeof window==='undefined'?globalThis:window);

@@ -1,0 +1,442 @@
+[
+  {
+    "id": "2bec5adca6a59870",
+    "type": "tab",
+    "label": "new telem",
+    "disabled": false,
+    "info": "",
+    "env": []
+  },
+  {
+    "id": "9c0c8b514e67de9b",
+    "type": "function",
+    "z": "2bec5adca6a59870",
+    "name": "function 1 (parse)",
+    "func": "// ============================================================\n// 0. INISIALISASI STATE & ACCUMULATORS\n// ============================================================\nif (!flow.get(\"isRunning\")) flow.set(\"isRunning\", false);\nif (!flow.get(\"isLapActive\")) flow.set(\"isLapActive\", false);\n\n// Variabel Delta (Untuk menghindari error saat ESP32 restart)\nif (!flow.get(\"prevRawEnergy\")) flow.set(\"prevRawEnergy\", 0);\nif (!flow.get(\"prevRawDistance\")) flow.set(\"prevRawDistance\", 0);\n\n// Variabel Akumulasi Sesi & Lap\nif (!flow.get(\"sessionEnergy\")) flow.set(\"sessionEnergy\", 0);\nif (!flow.get(\"sessionDistance\")) flow.set(\"sessionDistance\", 0);\nif (!flow.get(\"lapEnergyAcc\")) flow.set(\"lapEnergyAcc\", 0);\nif (!flow.get(\"lapDistanceAcc\")) flow.set(\"lapDistanceAcc\", 0);\n\nif (!flow.get(\"lapStartTime\")) flow.set(\"lapStartTime\", Date.now());\nif (!flow.get(\"lapCounter\")) flow.set(\"lapCounter\", 0);\n\n// === TAMBAHAN UNTUK CARRY-OVER (STACKING) ===\nif (!flow.get(\"carryOver\")) flow.set(\"carryOver\", 0);\nif (!flow.get(\"targetTime\")) flow.set(\"targetTime\", 200); // detik, bisa disesuaikan\n\n// === LIVE AVERAGE SPEED ===\nif (flow.get(\"speedSum\") === undefined) flow.set(\"speedSum\", 0);\nif (flow.get(\"speedCount\") === undefined) flow.set(\"speedCount\", 0);\n\n// ============================================================\n// 1. TANGANI PERINTAH TOMBOL\n// ============================================================\nif (msg.payload === \"START_SESSION\") {\n    flow.set(\"isRunning\", true);\n    flow.set(\"isLapActive\", true);\n    flow.set(\"lapStartTime\", Date.now());\n\n    // Reset Akumulator\n    flow.set(\"sessionEnergy\", 0);\n    flow.set(\"sessionDistance\", 0);\n    flow.set(\"lapEnergyAcc\", 0);\n    flow.set(\"lapDistanceAcc\", 0);\n    flow.set(\"lapCounter\", 1);\n\n    // Reset UI Last Lap\n    flow.set(\"lastLapTime\", \"--:--.---\");\n    flow.set(\"lastLapEnergy\", \"0.00\");\n    flow.set(\"lastLapKmPerKwh\", \"0.00\");\n\n    // Reset carry-over\n    flow.set(\"carryOver\", 0);\n\n    // Reset average speed lap\n    flow.set(\"speedSum\", 0);\n    flow.set(\"speedCount\", 0);\n\n    return [null, null, null, null, { payload: { cmd: \"START\", timestamp: Date.now() } }, null];\n}\n\nif (msg.payload === \"RECORD_LAP\") {\n    if (!flow.get(\"isRunning\")) return [null, null, null, null, null, null];\n\n    // 1. Ambil data akumulasi lap yang baru saja selesai\n    let energyUsed = flow.get(\"lapEnergyAcc\") || 0;\n    let lapDistance = flow.get(\"lapDistanceAcc\") || 0;\n\n    // 2. Hitung Waktu Lap (durasi aktual)\n    let startTime = flow.get(\"lapStartTime\") || Date.now();\n    let elapsed = (Date.now() - startTime) / 1000;\n    let m = Math.floor(elapsed / 60);\n    let s = Math.floor(elapsed % 60);\n    let ms = Math.floor((elapsed % 1) * 1000);\n    let lapStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;\n\n    // 3. Hitung km/kWh untuk lap ini (dengan pengaman)\n    let kmPerKwh = 0.00;\n    if (lapDistance > 0.01 && energyUsed > 0.1) {\n        kmPerKwh = lapDistance / (energyUsed / 1000);\n        if (kmPerKwh > 100) kmPerKwh = 100;\n    }\n\n    // 4. Simpan hasil lap ke UI\n    flow.set(\"lastLapTime\", lapStr);\n    flow.set(\"lastLapEnergy\", energyUsed.toFixed(2));\n    flow.set(\"lastLapKmPerKwh\", kmPerKwh.toFixed(2));\n\n    // 5. Akumulasi carry-over (stacking) dari sisa waktu lap ini\n    let targetTime = flow.get(\"targetTime\") || 200;\n    let remaining = targetTime - elapsed;\n    let carryOver = flow.get(\"carryOver\") || 0;\n    carryOver += remaining;\n    // Batasi agar effective target tidak kurang dari 1 detik (seperti di HP)\n    if (carryOver < 1 - targetTime) carryOver = 1 - targetTime;\n    flow.set(\"carryOver\", carryOver);\n\n    // 6. Reset akumulator khusus Lap (Sesi utama tetap berlanjut)\n    flow.set(\"lapEnergyAcc\", 0);\n    flow.set(\"lapDistanceAcc\", 0);\n    flow.set(\"lapStartTime\", Date.now());\n    flow.set(\"lapCounter\", (flow.get(\"lapCounter\") || 1) + 1);\n    flow.set(\"speedSum\", 0);\n    flow.set(\"speedCount\", 0);\n\n    return [null, null, null, null, { payload: { cmd: \"LAP\", timestamp: Date.now() } }, null];\n}\n\nif (msg.payload === \"RESET_ALL\") {\n    flow.set(\"isRunning\", false);\n    flow.set(\"isLapActive\", false);\n    flow.set(\"lapStartTime\", Date.now());\n    flow.set(\"sessionEnergy\", 0);\n    flow.set(\"sessionDistance\", 0);\n    flow.set(\"lapEnergyAcc\", 0);\n    flow.set(\"lapDistanceAcc\", 0);\n    flow.set(\"lapCounter\", 0);\n\n    flow.set(\"lastLapTime\", \"--:--.---\");\n    flow.set(\"lastLapEnergy\", \"0.00\");\n    flow.set(\"lastLapKmPerKwh\", \"0.00\");\n\n    flow.set(\"carryOver\", 0);  // reset carry-over\n    flow.set(\"speedSum\", 0);\n    flow.set(\"speedCount\", 0);\n\n    return [null, null, null, null, { payload: { cmd: \"RESET\", timestamp: Date.now() } }, null];\n}\n\n// ============================================================\n// TANGANI LAP_RESULT DARI HP (diterima tapi diabaikan agar tidak mengganggu)\n// ============================================================\nif (msg.payload && msg.payload.type === \"LAP_RESULT\") {\n    // Bisa digunakan untuk sinkronisasi, tetapi di sini kita abaikan\n    // karena laptop sudah menghitung sendiri.\n    return [null, null, null, null, null, null];\n}\n\n// ============================================================\n// 2. PARSING DATA MQTT\n// ============================================================\nlet str = msg.payload.toString().trim();\nlet parts = str.split(\",\");\nif (parts.length < 11) return [null, null, null, null, null, null];\n\nlet lat = parseFloat(parts[0]) || 0;\nlet lng = parseFloat(parts[1]) || 0;\nlet speed = parseFloat(parts[2]) || 0;\nlet sat = parseInt(parts[3]) || 0;\nlet throttle = parseInt(parts[4]) || 0;\nlet current_mA = parseFloat(parts[5]) || 0;\nlet voltage = parseFloat(parts[6]) || 0;\nlet power = parseFloat(parts[7]) || 0;\nlet energyRaw = parseFloat(parts[8]) || 0;\nlet distanceRaw = parseFloat(parts[9]) || 0;\nlet millis = parseFloat(parts[10]) || 0;\nlet current_A = current_mA / 1000.0;\n\n// ============================================================\n// 3. LOGIKA AKUMULASI (KEBAL RESTART)\n// ============================================================\nlet prevRawEnergy = flow.get(\"prevRawEnergy\") || 0;\nlet prevRawDist = flow.get(\"prevRawDistance\") || 0;\n\nlet deltaEnergy = energyRaw - prevRawEnergy;\nlet deltaDist = distanceRaw - prevRawDist;\n\nif (deltaEnergy < 0) deltaEnergy = energyRaw;\nif (deltaDist < 0) deltaDist = distanceRaw;\n\nflow.set(\"prevRawEnergy\", energyRaw);\nflow.set(\"prevRawDistance\", distanceRaw);\n\nif (flow.get(\"isRunning\")) {\n    flow.set(\"sessionEnergy\", (flow.get(\"sessionEnergy\") || 0) + deltaEnergy);\n    flow.set(\"sessionDistance\", (flow.get(\"sessionDistance\") || 0) + deltaDist);\n\n    flow.set(\"lapEnergyAcc\", (flow.get(\"lapEnergyAcc\") || 0) + deltaEnergy);\n    flow.set(\"lapDistanceAcc\", (flow.get(\"lapDistanceAcc\") || 0) + deltaDist);\n\n    // Fallback average dari sampel speed MQTT\n    flow.set(\"speedSum\", (flow.get(\"speedSum\") || 0) + speed);\n    flow.set(\"speedCount\", (flow.get(\"speedCount\") || 0) + 1);\n}\n\nlet displayTotalEnergy = flow.get(\"isRunning\") ? flow.get(\"sessionEnergy\") : 0;\nlet displayTotalDistance = flow.get(\"isRunning\") ? flow.get(\"sessionDistance\") : 0;\nlet displayLapEnergy = flow.get(\"isRunning\") ? flow.get(\"lapEnergyAcc\") : 0;\n\nlet displayKmPerKwhTotal = 0.00;\nif (flow.get(\"isRunning\") && displayTotalDistance > 0.05 && displayTotalEnergy > 0.5) {\n    displayKmPerKwhTotal = displayTotalDistance / (displayTotalEnergy / 1000);\n    if (displayKmPerKwhTotal > 100) displayKmPerKwhTotal = 100;\n}\n\n// ============================================================\n// 4. TIMER & REMAINING ENERGY (dengan CARRY-OVER)\n// ============================================================\nlet targetEnergy = 7.0;\nlet remainingEnergy = Math.max(0, targetEnergy - displayLapEnergy);\n\nlet targetTime = flow.get(\"targetTime\") || 200;\nlet carryOver = flow.get(\"carryOver\") || 0;\nlet effectiveTarget = Math.max(1, targetTime + carryOver);  // pastikan minimal 1 detik\n\nlet startTime = flow.get(\"lapStartTime\") || Date.now();\nlet elapsedSec = (Date.now() - startTime) / 1000;\nlet remainingSec = effectiveTarget - elapsedSec;\n\n// ============================================================\n// LIVE AVERAGE SPEED\n// Prioritas: jarak lap / waktu lap.\n// Fallback: rata-rata sampel speed MQTT.\n// ============================================================\nlet lapDistanceNow = flow.get(\"isRunning\") ? (flow.get(\"lapDistanceAcc\") || 0) : 0;\nlet speedSum = flow.get(\"speedSum\") || 0;\nlet speedCount = flow.get(\"speedCount\") || 0;\nlet averageSpeed = speedCount > 0 ? speedSum / speedCount : 0;\n\nif (flow.get(\"isRunning\") && elapsedSec > 0 && lapDistanceNow > 0) {\n    let avgByDistance = lapDistanceNow / (elapsedSec / 3600);\n    if (Number.isFinite(avgByDistance) && avgByDistance >= 0 && avgByDistance <= 80) {\n        averageSpeed = avgByDistance;\n    }\n}\nif (!Number.isFinite(averageSpeed) || averageSpeed < 0) averageSpeed = 0;\n\n// Elevation terbaru dari branch SRTM\nlet latestElevation = flow.get(\"latestElevation\");\nlet latestGrade = flow.get(\"latestGrade\");\n\nlet currentLap, countdown, countdownColor;\nif (!flow.get(\"isRunning\")) {\n    currentLap = \"--:--.---\";\n    countdown = \"--:--.---\";\n    countdownColor = \"#666\";\n} else {\n    function fmtTime(sec) {\n        let m = Math.floor(Math.abs(sec) / 60);\n        let s = Math.floor(Math.abs(sec) % 60);\n        let ms = Math.floor((Math.abs(sec) % 1) * 1000);\n        let sign = sec < 0 ? '-' : '';\n        return `${sign}${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;\n    }\n    currentLap = fmtTime(elapsedSec);\n    countdown = fmtTime(remainingSec);\n    countdownColor = remainingSec <= 0 ? \"#ff0044\" : (remainingSec <= 60 ? \"#ffff00\" : \"#00ff00\");\n}\n\n// ============================================================\n// 5. PENYUSUNAN OUTPUT\n// ============================================================\nlet msgTemplate = {\n    payload: {\n        speed: speed.toFixed(0),\n        speedPct: Math.min((speed / 50) * 100, 100).toFixed(1),\n        avgSpeed: averageSpeed.toFixed(1),\n        elevation: (typeof latestElevation === \"number\" && Number.isFinite(latestElevation)) ? latestElevation.toFixed(1) : \"—\",\n        grade: (typeof latestGrade === \"number\" && Number.isFinite(latestGrade)) ? latestGrade.toFixed(1) : \"—\",\n        current: current_A.toFixed(2),\n        voltage: voltage.toFixed(1),\n        power: power.toFixed(0),\n        energy: displayLapEnergy.toFixed(2),\n        remEnergy: remainingEnergy.toFixed(2),\n        throttle: throttle,\n        sat: sat,\n        currentLap: currentLap,\n        countdown: countdown,\n        countdownColor: countdownColor,\n        lastLapTime: flow.get(\"lastLapTime\") || \"--:--.---\",\n        lastLapEnergy: flow.get(\"lastLapEnergy\") || \"0.00\",\n        lastLapKmPerKwh: flow.get(\"lastLapKmPerKwh\") || \"0.00\",\n        distance: displayTotalDistance.toFixed(2),\n        kmPerKwh: displayKmPerKwhTotal.toFixed(2)\n    }\n};\n\nlet msgMap = {\n    payload: { name: \"RAKATA_EV\", lat, lon: lng, heading: 0, icon: \"fa-location-arrow\", iconColor: \"red\", track: true, ttl: 180 }\n};\n\nlet telemetryMsg = null;\nif (flow.get(\"isRunning\")) {\n    let now = new Date().toISOString();\n    let telemetryLine = `${now},${lat.toFixed(6)},${lng.toFixed(6)},${speed.toFixed(2)},${sat},${throttle},${current_mA.toFixed(3)},${voltage.toFixed(2)},${power.toFixed(2)},${energyRaw.toFixed(4)},${displayTotalDistance.toFixed(3)},${millis}`;\n    telemetryMsg = { payload: telemetryLine };\n}\n\n// Output urutan: [ui_template, ui_worldmap, null, file, mqtt out, null]\nreturn [msgTemplate, msgMap, null, telemetryMsg, null, null];",
+    "outputs": 6,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 160,
+    "wires": [
+      [
+        "7b52cf806898f462"
+      ],
+      [
+        "e3ef620157562e30",
+        "ee10000000000001"
+      ],
+      [],
+      [
+        "3559723766e8405f"
+      ],
+      [
+        "0c31efb4a6737bdb",
+        "ee10000000000001"
+      ],
+      []
+    ]
+  },
+  {
+    "id": "7b52cf806898f462",
+    "type": "ui_template",
+    "z": "2bec5adca6a59870",
+    "group": "69f66715fbd1f5e6",
+    "name": "Telemetry utama — 3/4 kiri",
+    "order": 1,
+    "width": 18,
+    "height": 12,
+    "format": "\n<style>\n  .urban-main{\n    width:100%;\n    height:100%;\n    min-height:540px;\n    box-sizing:border-box;\n    padding:6px;\n    background:#030303;\n    font-family:'Segoe UI',Arial,sans-serif;\n    display:grid;\n    grid-template-columns:repeat(4,minmax(0,1fr));\n    grid-template-rows:repeat(4,minmax(0,1fr));\n    gap:6px;\n  }\n  .u-card{\n    min-width:0;\n    border:2px solid #222;\n    background:#0f0f0f;\n    border-radius:7px;\n    padding:7px 5px;\n    box-sizing:border-box;\n    display:flex;\n    flex-direction:column;\n    align-items:center;\n    justify-content:center;\n    text-align:center;\n    box-shadow:inset 0 0 10px rgba(0,0,0,.9);\n  }\n  .u-speed{grid-column:span 2;grid-row:span 2}\n  .u-last{grid-column:span 2}\n  .u-value-xl{font-size:clamp(52px,6vw,92px);font-weight:900;line-height:1;color:#fff}\n  .u-value-lg{font-size:clamp(25px,3vw,42px);font-weight:900;line-height:1.05}\n  .u-value-md{font-size:clamp(18px,2vw,30px);font-weight:850;line-height:1.05}\n  .u-value-sm{font-size:clamp(14px,1.45vw,22px);font-weight:800;line-height:1.05}\n  .u-label{margin-top:5px;font-size:clamp(8px,.8vw,13px);font-weight:800;color:#858585;letter-spacing:.8px;text-transform:uppercase}\n  .u-blue{color:#00c3ff}.u-cyan{color:#00ffff}.u-green{color:#00ff00}\n  .u-orange{color:#ff6600}.u-yellow{color:#ffe600}.u-pink{color:#ff66b2}.u-white{color:#fff}\n  .speed-ring{\n    width:145px;height:145px;border-radius:50%;\n    display:flex;align-items:center;justify-content:center;margin-bottom:4px;\n  }\n  .speed-center{\n    width:116px;height:116px;border-radius:50%;background:#0f0f0f;\n    display:flex;align-items:center;justify-content:center;\n    box-shadow:inset 0 0 10px rgba(0,0,0,.9);\n  }\n  .avg-row{\n    width:78%;margin-top:7px;padding-top:7px;border-top:1px solid #3b3b3b;\n    display:flex;justify-content:center;align-items:baseline;gap:8px;\n  }\n  .pair{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}\n  .pair>div{display:flex;flex-direction:column;align-items:center}\n  .small-line{width:70%;border:0;border-top:1px solid #333;margin:6px 0}\n</style>\n\n<div class=\"urban-main\">\n\n  <div class=\"u-card\">\n    <div class=\"u-value-lg u-blue\">{{msg.payload.currentLap || '--:--.---'}}</div>\n    <div class=\"u-label\">Current lap</div>\n  </div>\n\n  <div class=\"u-card\">\n    <div class=\"u-value-lg\" style=\"color:{{msg.payload.countdownColor || '#666'}}\">\n      {{msg.payload.countdown || '--:--.---'}}\n    </div>\n    <div class=\"u-label\">Remaining lap</div>\n  </div>\n\n  <div class=\"u-card\">\n    <div class=\"u-value-lg u-white\">{{msg.payload.distance || '0.00'}}</div>\n    <div class=\"u-label\">Distance (km)</div>\n  </div>\n\n  <div class=\"u-card\">\n    <div class=\"u-value-lg u-pink\">{{msg.payload.kmPerKwh || '0.00'}}</div>\n    <div class=\"u-label\">km / kWh</div>\n  </div>\n\n  <div class=\"u-card u-speed\">\n    <div class=\"speed-ring\"\n         style=\"background:conic-gradient(#fff {{msg.payload.speedPct || 0}}%,#222 0%)\">\n      <div class=\"speed-center\">\n        <div class=\"u-value-xl\">{{msg.payload.speed || '0'}}</div>\n      </div>\n    </div>\n    <div class=\"u-label\">Speed (km/h)</div>\n    <div class=\"avg-row\">\n      <div class=\"u-value-md u-cyan\">{{msg.payload.avgSpeed || '0.0'}}</div>\n      <div class=\"u-label\" style=\"margin-top:0\">AVG km/h</div>\n    </div>\n  </div>\n\n  <div class=\"u-card\">\n    <div class=\"u-value-lg u-orange\">{{msg.payload.throttle || '0'}}</div>\n    <div class=\"u-label\">Throttle (%)</div>\n  </div>\n\n  <div class=\"u-card\">\n    <div class=\"u-value-lg u-orange\">{{msg.payload.current || '0.00'}}</div>\n    <div class=\"u-label\">Current (A)</div>\n  </div>\n\n  <div class=\"u-card\">\n    <div class=\"u-value-lg u-white\">{{msg.payload.power || '0'}}</div>\n    <div class=\"u-label\">Power (W)</div>\n  </div>\n\n  <div class=\"u-card\">\n    <div class=\"u-value-lg u-white\">{{msg.payload.energy || '0.00'}}</div>\n    <div class=\"u-label\">Energy used (Wh)</div>\n  </div>\n\n  <div class=\"u-card\">\n    <div class=\"u-value-lg u-cyan\">{{msg.payload.remEnergy || '0.00'}}</div>\n    <div class=\"u-label\">Remaining energy (Wh)</div>\n  </div>\n\n  <div class=\"u-card\">\n    <div class=\"pair\">\n      <div>\n        <div class=\"u-value-md u-green\">{{msg.payload.elevation || '—'}}</div>\n        <div class=\"u-label\">Elevation (m)</div>\n      </div>\n      <div>\n        <div class=\"u-value-md u-yellow\">{{msg.payload.grade || '—'}}</div>\n        <div class=\"u-label\">Grade (%)</div>\n      </div>\n    </div>\n  </div>\n\n  <div class=\"u-card\">\n    <div class=\"pair\">\n      <div>\n        <div class=\"u-value-md u-white\">{{msg.payload.voltage || '0.0'}}</div>\n        <div class=\"u-label\">Voltage (V)</div>\n      </div>\n      <div>\n        <div class=\"u-value-md u-green\">{{msg.payload.sat || '0'}}</div>\n        <div class=\"u-label\">Satellites</div>\n      </div>\n    </div>\n  </div>\n\n  <div class=\"u-card u-last\" style=\"border-color:#555\">\n    <div class=\"u-value-md u-yellow\">{{msg.payload.lastLapTime || '--:--.---'}}</div>\n    <div class=\"pair\" style=\"margin-top:7px\">\n      <div>\n        <div class=\"u-value-sm u-yellow\">{{msg.payload.lastLapEnergy || '0.00'}} Wh</div>\n        <div class=\"u-label\">Last lap energy</div>\n      </div>\n      <div>\n        <div class=\"u-value-sm u-pink\">{{msg.payload.lastLapKmPerKwh || '0.00'}}</div>\n        <div class=\"u-label\">Last lap km/kWh</div>\n      </div>\n    </div>\n  </div>\n\n</div>\n",
+    "storeOutMessages": true,
+    "fwdInMessages": true,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 560,
+    "y": 100,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "e3ef620157562e30",
+    "type": "ui_worldmap",
+    "z": "2bec5adca6a59870",
+    "group": "69f66715fbd1f5e6",
+    "order": 3,
+    "width": 6,
+    "height": 4,
+    "name": "",
+    "lat": "",
+    "lon": "",
+    "zoom": "15",
+    "layer": "OSMC",
+    "cluster": "",
+    "maxage": "",
+    "usermenu": "hide",
+    "layers": "hide",
+    "panit": "true",
+    "panlock": "false",
+    "zoomlock": "false",
+    "hiderightclick": "true",
+    "coords": "none",
+    "showgrid": "false",
+    "showruler": "false",
+    "allowFileDrop": "false",
+    "path": "/worldmap",
+    "overlist": "DR,CO,RA,DN,HM",
+    "maplist": "OSMG,OSMC,EsriC,EsriS,EsriT,EsriDG,UKOS",
+    "mapname": "",
+    "mapurl": "",
+    "mapopt": "",
+    "mapwms": false,
+    "x": 680,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "id": "bd1ae793d743cf26",
+    "type": "ui_button",
+    "z": "2bec5adca6a59870",
+    "name": "RECORD_LAP",
+    "group": "69f66715fbd1f5e6",
+    "order": 5,
+    "width": 2,
+    "height": 2,
+    "passthru": false,
+    "label": "LAP",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "#00cc00",
+    "className": "",
+    "icon": "",
+    "payload": "RECORD_LAP",
+    "payloadType": "str",
+    "topic": "topic",
+    "topicType": "msg",
+    "x": 140,
+    "y": 240,
+    "wires": [
+      [
+        "9c0c8b514e67de9b"
+      ]
+    ]
+  },
+  {
+    "id": "12f4122c72e4d0bf",
+    "type": "ui_button",
+    "z": "2bec5adca6a59870",
+    "name": "RESET",
+    "group": "69f66715fbd1f5e6",
+    "order": 6,
+    "width": 2,
+    "height": 2,
+    "passthru": false,
+    "label": "RESET",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "#cc0000",
+    "className": "",
+    "icon": "",
+    "payload": "RESET_ALL",
+    "payloadType": "str",
+    "topic": "topic",
+    "topicType": "msg",
+    "x": 220,
+    "y": 80,
+    "wires": [
+      [
+        "9c0c8b514e67de9b"
+      ]
+    ]
+  },
+  {
+    "id": "3559723766e8405f",
+    "type": "file",
+    "z": "2bec5adca6a59870",
+    "name": "data_telem",
+    "filename": "./telemetry_logs/csv_raw/data_telemetri_td9.csv",
+    "filenameType": "str",
+    "appendNewline": true,
+    "createDir": true,
+    "overwriteFile": "false",
+    "encoding": "none",
+    "x": 690,
+    "y": 300,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "a715ee3573a429f1",
+    "type": "mqtt in",
+    "z": "2bec5adca6a59870",
+    "name": "Lap Result",
+    "topic": "rakata/lap_result",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "62c6b851023bc3c1",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 80,
+    "y": 120,
+    "wires": [
+      [
+        "9c0c8b514e67de9b"
+      ]
+    ]
+  },
+  {
+    "id": "0c31efb4a6737bdb",
+    "type": "mqtt out",
+    "z": "2bec5adca6a59870",
+    "name": "control",
+    "topic": "control",
+    "qos": "0",
+    "retain": "",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "62c6b851023bc3c1",
+    "x": 670,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "id": "844238fcf75208f7",
+    "type": "mqtt in",
+    "z": "2bec5adca6a59870",
+    "name": "",
+    "topic": "Paddock",
+    "qos": "2",
+    "datatype": "auto-detect",
+    "broker": "62c6b851023bc3c1",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 120,
+    "y": 180,
+    "wires": [
+      [
+        "9c0c8b514e67de9b"
+      ]
+    ]
+  },
+  {
+    "id": "4e0ecee0426ae6a3",
+    "type": "ui_button",
+    "z": "2bec5adca6a59870",
+    "name": "START",
+    "group": "69f66715fbd1f5e6",
+    "order": 4,
+    "width": 2,
+    "height": 2,
+    "passthru": false,
+    "label": "START",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "#005DFF",
+    "className": "",
+    "icon": "",
+    "payload": "START_SESSION",
+    "payloadType": "str",
+    "topic": "topic",
+    "topicType": "msg",
+    "x": 160,
+    "y": 300,
+    "wires": [
+      [
+        "9c0c8b514e67de9b"
+      ]
+    ]
+  },
+  {
+    "id": "69f66715fbd1f5e6",
+    "type": "ui_group",
+    "name": "Urban",
+    "tab": "66928ae49d0be5d3",
+    "order": 1,
+    "disp": true,
+    "width": 24,
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "62c6b851023bc3c1",
+    "type": "mqtt-broker",
+    "name": "buatTD02",
+    "broker": "<YOUR_HIVEMQ_CLUSTER_URL>.s1.eu.hivemq.cloud",
+    "port": "8883",
+    "tls": "9dac2f33980d8f8f",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": true,
+    "protocolVersion": 4,
+    "keepalive": 60,
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthRetain": "false",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closeRetain": "false",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willRetain": "false",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": ""
+  },
+  {
+    "id": "66928ae49d0be5d3",
+    "type": "ui_tab",
+    "name": "Paddock",
+    "icon": "dashboard",
+    "order": 2,
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "9dac2f33980d8f8f",
+    "type": "tls-config",
+    "name": "",
+    "cert": "",
+    "key": "",
+    "ca": "",
+    "certname": "",
+    "keyname": "",
+    "caname": "",
+    "servername": "<YOUR_HIVEMQ_CLUSTER_URL>.s1.eu.hivemq.cloud",
+    "verifyservercert": true,
+    "alpnprotocol": ""
+  },
+  {
+    "id": "d7405a78f1d5607f",
+    "type": "global-config",
+    "env": [],
+    "modules": {
+      "node-red-dashboard": "3.6.6",
+      "node-red-contrib-web-worldmap": "5.8.1"
+    }
+  },
+  {
+    "id": "ee10000000000001",
+    "type": "function",
+    "z": "2bec5adca6a59870",
+    "name": "Elevation: GPS + cache",
+    "func": "// Independent elevation branch. No writes to original telemetry state.\nlet st=flow.get('elev_v1')||{epoch:0,points:[],cache:{},s:0,segment:0,seq:0};\nconst now=Date.now(),p=msg.payload||{};\nif(p.cmd==='START'||p.cmd==='RESET'){\n st.epoch++;st.points=[];st.s=0;st.prev=null;st.pending=null;st.segment++;st.lastSample=null;\n flow.set('elev_v1',st);return [null,{_elevReset:true,payload:{}}];\n}\nif(p.cmd||!flow.get('isRunning'))return null;\nconst lat=Number(p.lat),lon=Number(p.lon);\nif(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180||(lat===0&&lon===0))return null;\nconst rad=Math.PI/180;\nfunction metres(a,b){let q=Math.sin((b.lat-a.lat)*rad/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin((b.lon-a.lon)*rad/2)**2;return 12742000*Math.asin(Math.sqrt(Math.min(1,q)));}\nconst cur={lat,lon,t:now};\nif(st.prev){\n const dt=(now-st.prev.t)/1000,ds=metres(st.prev,cur);\n if(dt>5||ds>Math.max(10,dt*60/3.6)){st.segment++;st.lastSample=null;}\n else if(ds>=1)st.s+=ds;\n}\nst.prev=cur;\nif(st.pending&&now-st.pending.t<15000){flow.set('elev_v1',st);return null;}\nif(st.lastSample&&st.s-st.lastSample.s<20&&st.segment===st.lastSample.segment){flow.set('elev_v1',st);return null;}\nif(now-(st.lastTry||0)<10000){flow.set('elev_v1',st);return null;}\nconst key=lat.toFixed(4)+','+lon.toFixed(4);\nconst meta={epoch:st.epoch,id:++st.seq,s:st.s,t:now,segment:st.segment,key};\nst.lastTry=now;st.lastSample=meta;\nif(st.cache[key]!==undefined){flow.set('elev_v1',st);return [null,{_elev:meta,payload:{status:'OK',results:[{elevation:st.cache[key]}]}}];}\nconst day=new Date(now).toISOString().slice(0,10);if(st.day!==day){st.day=day;st.calls=0;}\nif(st.calls>=950){flow.set('elev_v1',st);return [null,{_elev:meta,payload:{status:'LIMIT'}}];}\nst.calls++;st.pending=meta;flow.set('elev_v1',st);\nreturn [{_elev:meta,method:'GET',url:'https://api.opentopodata.org/v1/srtm30m?locations='+encodeURIComponent(key)+'&interpolation=bilinear',payload:''},null];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 520,
+    "y": 460,
+    "wires": [
+      [
+        "ee10000000000002"
+      ],
+      [
+        "ee10000000000003"
+      ]
+    ]
+  },
+  {
+    "id": "ee10000000000002",
+    "type": "http request",
+    "z": "2bec5adca6a59870",
+    "name": "SRTM elevation (10 s timeout)",
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "requestTimeout": "10000",
+    "x": 780,
+    "y": 440,
+    "wires": [
+      [
+        "ee10000000000003"
+      ]
+    ]
+  },
+  {
+    "id": "ee10000000000003",
+    "type": "function",
+    "z": "2bec5adca6a59870",
+    "name": "Elevation: profile + grade",
+    "func": "let st=flow.get('elev_v1');if(!st)return null;\nif(msg._elevReset){flow.set('latestElevation',null);flow.set('latestGrade',null);return {payload:{points:[],status:'Menunggu GPS',last:'—',elevation:null,grade:null}};}\nconst m=msg._elev;if(!m||m.epoch!==st.epoch)return null;\nif(st.pending&&st.pending.id===m.id)st.pending=null;\nif(st.lastAccepted&&m.id<=st.lastAccepted&&st.acceptedEpoch===m.epoch)return null;\nlet body=msg.payload;if(typeof body==='string'){try{body=JSON.parse(body);}catch(e){body={};}}\nconst value=body&&body.status==='OK'&&body.results&&body.results[0]?body.results[0].elevation:null;\nlet status='API gagal · data terakhir';\nif(body&&body.status==='LIMIT')status='Batas API · data terakhir';\nif(typeof value==='number'&&Number.isFinite(value)&&!msg.error&&(!msg.statusCode||msg.statusCode===200)){\n st.lastAccepted=m.id;st.acceptedEpoch=m.epoch;\n st.cache[m.key]=value;const keys=Object.keys(st.cache);if(keys.length>600)delete st.cache[keys[0]];\n let grade=null;\n // Backward mean slope over >=50 m in one uninterrupted trace, not instant tilt.\n for(let i=st.points.length-1;i>=0;i--){const a=st.points[i];if(a.segment!==m.segment)break;if(m.s-a.s>=50){if(m.s-a.s<=150)grade=100*(value-a.h)/(m.s-a.s);break;}}\n st.points.push({s:m.s,h:value,g:grade,t:m.t,segment:m.segment});st.points=st.points.slice(-300);\n status='SRTM 30 m · estimasi';\n}else{st.lastSample=null;st.segment++;}\nflow.set('elev_v1',st);\nconst last=st.points[st.points.length-1];\nflow.set('latestElevation',last?last.h:null);flow.set('latestGrade',last?last.g:null);\nreturn {payload:{points:st.points,status,last:last?new Date(last.t).toLocaleTimeString():'—',elevation:last?last.h:null,grade:last?last.g:null}};\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1050,
+    "y": 460,
+    "wires": [
+      [
+        "ee10000000000004"
+      ]
+    ]
+  },
+  {
+    "id": "ee10000000000005",
+    "type": "catch",
+    "z": "2bec5adca6a59870",
+    "name": "Elevation API error",
+    "scope": [
+      "ee10000000000002"
+    ],
+    "uncaught": false,
+    "x": 790,
+    "y": 530,
+    "wires": [
+      [
+        "ee10000000000003"
+      ]
+    ]
+  },
+  {
+    "id": "ee10000000000004",
+    "type": "ui_template",
+    "z": "2bec5adca6a59870",
+    "group": "69f66715fbd1f5e6",
+    "name": "Elevation / grade — kanan",
+    "order": 2,
+    "width": 6,
+    "height": 6,
+    "format": "\n<div style=\"height:100%;box-sizing:border-box;background:#101713;color:#dfebe2;padding:8px;border:1px solid #3b5042;border-radius:8px;overflow:hidden\">\n  <div style=\"display:flex;justify-content:space-between;gap:6px;align-items:center\">\n    <b style=\"font-size:12px\">PROFIL ELEVASI</b>\n    <span style=\"font-size:10px;color:#abbfaf\">{{msg.payload.status || 'Tekan START'}}</span>\n  </div>\n\n  <div style=\"font-size:11px;margin:5px 0 3px\">\n    Elev. <b>{{msg.payload.elevation == null ? '—' : (msg.payload.elevation | number:1)}} m</b>\n    &nbsp;·&nbsp;\n    Grade <b>{{msg.payload.grade == null ? '—' : (msg.payload.grade | number:1)}} %</b>\n  </div>\n\n  <canvas id=\"elevation-{{$id}}\" width=\"520\" height=\"145\" style=\"width:100%;height:145px\"></canvas>\n  <canvas id=\"grade-{{$id}}\" width=\"520\" height=\"105\" style=\"width:100%;height:105px\"></canvas>\n\n  <div style=\"font-size:9px;color:#8da092;margin-top:2px\">\n    GPS distance · SRTM 30 m · START/RESET clears graph\n  </div>\n</div>\n\n<script>\n(function(scope){\n function draw(id,rows,key,label,color){\n  const canvas=document.getElementById(id+'-'+scope.$id); if(!canvas)return;\n  const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height;\n  c.clearRect(0,0,w,h);\n  c.font='11px sans-serif'; c.fillStyle='#dfebe2'; c.fillText(label,42,14);\n  const valid=rows.filter(p=>typeof p[key]==='number'&&Number.isFinite(p[key]));\n  if(!valid.length){c.fillText('Menunggu data',42,48);return;}\n  const x0=rows[0].s,x1=Math.max(x0+1,rows[rows.length-1].s);\n  let min=Math.min(...valid.map(p=>p[key])),max=Math.max(...valid.map(p=>p[key]));\n  if(key==='g'){min=Math.min(0,min);max=Math.max(0,max);}\n  const pad=Math.max(.5,(max-min)*.12); min-=pad; max+=pad;\n  const x=s=>42+(s-x0)/(x1-x0)*(w-58);\n  const y=v=>h-22-(v-min)/(max-min)*(h-42);\n  c.lineWidth=1;\n  for(let k=0;k<=3;k++){\n    const value=min+(max-min)*k/3;\n    c.strokeStyle='#304638';c.beginPath();c.moveTo(42,y(value));c.lineTo(w-16,y(value));c.stroke();\n    c.fillStyle='#abbfaf';c.fillText(value.toFixed(1),2,y(value)+3);\n  }\n  c.fillText(x0.toFixed(0)+'m',42,h-5);c.fillText(x1.toFixed(0)+'m',w-54,h-5);\n  c.strokeStyle=color;c.fillStyle=color;c.lineWidth=2;let prev=null;\n  rows.forEach(p=>{\n    if(p[key]==null){prev=null;return;}\n    if(prev&&prev.segment===p.segment){\n      c.beginPath();c.moveTo(x(prev.s),y(prev[key]));c.lineTo(x(p.s),y(p[key]));c.stroke();\n    }\n    c.beginPath();c.arc(x(p.s),y(p[key]),1.8,0,7);c.fill();prev=p;\n  });\n }\n const unwatch=scope.$watch('msg',function(m){\n  if(!m||!m.payload)return;\n  setTimeout(function(){\n    const p=m.payload.points||[];\n    draw('elevation',p,'h','Elevation (m)','#a9d4b4');\n    draw('grade',p,'g','Grade (%)','#edbc63');\n  },0);\n });\n scope.$on('$destroy',function(){unwatch();});\n})(scope);\n</script>\n",
+    "storeOutMessages": true,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 1310,
+    "y": 460,
+    "wires": [
+      []
+    ]
+  }
+]

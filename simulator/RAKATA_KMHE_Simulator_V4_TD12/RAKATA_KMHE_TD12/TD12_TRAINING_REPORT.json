@@ -1,0 +1,269 @@
+{
+  "source": "3 lap td12.html",
+  "voltage": 54,
+  "target": 225,
+  "clock": "millis perangkat; waktu HTML disimpan terpisah",
+  "fit": [
+    1.4953613903822847,
+    1.3242240386367488,
+    1.1642135287857152,
+    0.4,
+    0.05014299476623361,
+    0,
+    0.019237075183206394,
+    -0.0269261887832064,
+    -0.005721325935001603,
+    0.02182928302735361,
+    0.993402930233344,
+    31.5
+  ],
+  "training": [
+    {
+      "lap": "TD12-1",
+      "speed_rmse": 1.4803577460856598,
+      "distance_at_record_end": 1434.1841422391433,
+      "energy_at_record_end": 6.189173868184517,
+      "energy_error": -0.080126131815482
+    },
+    {
+      "lap": "TD12-2",
+      "speed_rmse": 1.6480874565838628,
+      "distance_at_record_end": 1460.2554913651811,
+      "energy_at_record_end": 6.637831718059781,
+      "energy_error": -0.034468281940219114
+    },
+    {
+      "lap": "TD12-3",
+      "speed_rmse": 2.4231562416705072,
+      "distance_at_record_end": 1452.5417331688338,
+      "energy_at_record_end": 6.6323984790907975,
+      "energy_error": 0.0900984790907966
+    }
+  ],
+  "heldout": [
+    {
+      "lap": "TD12-1",
+      "speed_rmse": 1.9073858044802061,
+      "distance_at_record_end": 1415.5801436736413,
+      "energy_at_record_end": 6.1764420932411275,
+      "energy_error": -0.09285790675887196
+    },
+    {
+      "lap": "TD12-2",
+      "speed_rmse": 1.9633470565658833,
+      "distance_at_record_end": 1462.8938474893177,
+      "energy_at_record_end": 6.596571449569484,
+      "energy_error": -0.07572855043051607
+    },
+    {
+      "lap": "TD12-3",
+      "speed_rmse": 3.943618199237101,
+      "distance_at_record_end": 1420.0111170752964,
+      "energy_at_record_end": 6.2807662014976815,
+      "energy_error": -0.2615337985023194
+    }
+  ],
+  "laps": [
+    {
+      "lap": "TD12-1",
+      "time": 222.271,
+      "html_time": 223.578,
+      "time_with_full_spare": 222.271,
+      "energy": 6.269299999999999,
+      "distance": 1444.1740676287438,
+      "quality": "field-confirmed",
+      "field_valid": true,
+      "end_speed": 0,
+      "max_speed": 31.52,
+      "pulses": 4,
+      "phases": [
+        {
+          "start_s": 0.308,
+          "end_s": 1.227,
+          "start_m": 0,
+          "end_m": 0,
+          "v_start": 0,
+          "v_end": 0,
+          "energy": 0.0038000000000000256
+        },
+        {
+          "start_s": 1.329,
+          "end_s": 14.188,
+          "start_m": 0,
+          "end_m": 68.18518846544562,
+          "v_start": 0,
+          "v_end": 31.52,
+          "energy": 2.3062
+        },
+        {
+          "start_s": 105.319,
+          "end_s": 117.054,
+          "start_m": 708.324466873876,
+          "end_m": 787.1019031504285,
+          "v_start": 20.27,
+          "v_end": 31.19,
+          "energy": 1.2889
+        },
+        {
+          "start_s": 160.732,
+          "end_s": 171.449,
+          "start_m": 1109.4260920856161,
+          "end_m": 1182.2320759250426,
+          "v_start": 20.1,
+          "v_end": 30.35,
+          "energy": 1.5586000000000002
+        }
+      ],
+      "source_start": 7,
+      "source_end": 2185,
+      "gap_count": 0,
+      "note": "Valid lapangan dikonfirmasi pengguna; waktu perangkat, jarak GPS dinormalisasi untuk peta; bukan bukti berhenti penuh."
+    },
+    {
+      "lap": "TD12-2",
+      "time": 218.266,
+      "html_time": 217.26,
+      "time_with_full_spare": 218.266,
+      "energy": 6.6723,
+      "distance": 1441.0750301656915,
+      "quality": "field-confirmed",
+      "field_valid": true,
+      "end_speed": 0.91,
+      "max_speed": 31.53,
+      "pulses": 4,
+      "phases": [
+        {
+          "start_s": 1.122,
+          "end_s": 13.978,
+          "start_m": 0,
+          "end_m": 60.43051441042975,
+          "v_start": 0,
+          "v_end": 30.77,
+          "energy": 2.2856000000000005
+        },
+        {
+          "start_s": 99.793,
+          "end_s": 110.303,
+          "start_m": 671.15085253713,
+          "end_m": 747.5068911154182,
+          "v_start": 20.91,
+          "v_end": 30.35,
+          "energy": 1.244299999999999
+        },
+        {
+          "start_s": 157.341,
+          "end_s": 167.546,
+          "start_m": 1082.9232784576377,
+          "end_m": 1154.2220877286331,
+          "v_start": 20.05,
+          "v_end": 30.95,
+          "energy": 1.6129999999999995
+        },
+        {
+          "start_s": 189.077,
+          "end_s": 194.383,
+          "start_m": 1294.5414240763173,
+          "end_m": 1325.0439460990535,
+          "v_start": 19.35,
+          "v_end": 22.52,
+          "energy": 0.3308
+        }
+      ],
+      "source_start": 2198,
+      "source_end": 4337,
+      "gap_count": 0,
+      "note": "Valid lapangan dikonfirmasi pengguna; waktu perangkat, jarak GPS dinormalisasi untuk peta; bukan bukti berhenti penuh."
+    },
+    {
+      "lap": "TD12-3",
+      "time": 216.845,
+      "html_time": 210.588,
+      "time_with_full_spare": 216.845,
+      "energy": 6.542300000000001,
+      "distance": 1440.2003059997749,
+      "quality": "field-confirmed",
+      "field_valid": true,
+      "end_speed": 9.78,
+      "max_speed": 31.09,
+      "pulses": 3,
+      "phases": [
+        {
+          "start_s": 0,
+          "end_s": 11.124,
+          "start_m": 0,
+          "end_m": 65.61550063317044,
+          "v_start": 0,
+          "v_end": 30.33,
+          "energy": 2.2035
+        },
+        {
+          "start_s": 115.929,
+          "end_s": 120.316,
+          "start_m": 792.7325496994074,
+          "end_m": 823.9860571159978,
+          "v_start": 28.11,
+          "v_end": 28.72,
+          "energy": 0.29189999999999827
+        },
+        {
+          "start_s": 157.053,
+          "end_s": 176.339,
+          "start_m": 1081.9514057508243,
+          "end_m": 1217.8151743367548,
+          "v_start": 20.48,
+          "v_end": 28.19,
+          "energy": 2.257999999999999
+        }
+      ],
+      "source_start": 4371,
+      "source_end": 6156,
+      "gap_count": 1,
+      "note": "Valid lapangan dikonfirmasi pengguna; waktu perangkat, jarak GPS dinormalisasi untuk peta; bukan bukti berhenti penuh."
+    }
+  ],
+  "strategies": [
+    {
+      "name": "TD12 Lap 1 · simulasi kalibrasi",
+      "time": 219.85289234312384,
+      "energy": 6.344338484068095,
+      "max_speed": 32.56667323082325,
+      "finish_speed": 10.283639260261598,
+      "finished": true,
+      "pulses": 4,
+      "valid": true,
+      "source_lap": 1,
+      "timing_scale": 1.0250000000000001
+    },
+    {
+      "name": "TD12 Lap 2 · simulasi kalibrasi",
+      "time": 221.78524913602516,
+      "energy": 6.3477478423877525,
+      "max_speed": 32.11048740312254,
+      "finish_speed": 10.674893358160567,
+      "finished": true,
+      "pulses": 4,
+      "valid": true,
+      "source_lap": 2,
+      "timing_scale": 0.9750000000000002
+    },
+    {
+      "name": "TD12 Lap 3 · simulasi kalibrasi",
+      "time": 217.13720891454204,
+      "energy": 6.529812446508493,
+      "max_speed": 32.10559769541742,
+      "finish_speed": 12.872215421385429,
+      "finished": true,
+      "pulses": 3,
+      "valid": true,
+      "source_lap": 3,
+      "timing_scale": 1.0000000000000002
+    }
+  ],
+  "limits": [
+    "Tiga lap dari sesi sama, bukan validasi independen lapangan.",
+    "Gap tidak menjadi pengamatan percepatan; input ditahan sampai sampel berikutnya pada rollout.",
+    "Model tidak mengidentifikasi Crr/CdA secara terpisah.",
+    "UNEJ tetap model transfer lama; kalibrasi TD12 hanya Sport Jabar.",
+    "Replay lapangan tidak masuk leaderboard pemain."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "source_sha256": {
+    "td10full.xlsx": "312d8cc02e2f9d8fb8f6aa89ea92ac57753f1f610f67d16026ed6fa9bdd7ef31",
+    "td10_lap_metrics_v8_2.csv": "c153874abb70f0506f21766711064bbc1d986738e8a59211480669cc86cd3d3e",
+    "sport_jabar_google_earth_profile_v8_1.csv": "5016c8ab5d461fe7d8878718d98abd9279148329e146464cfa44cf28eb8f88ca",
+    "rakata_track_centerline_actual_v1.csv": "66a82ff0a3343adcd1d3d88b33b6582c407d73d2086eed5b74e42c854b724213",
+    "20260823153724-46217-data.csv": "191703511913ed2ad9a51e1e79fc604f6953c45219bdc6adbdb8f7513cc2c1c4"
+  },
+  "packages": {
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "scipy": "1.17.0",
+    "matplotlib": "3.10.8",
+    "openpyxl": "3.1.5"
+  },
+  "configuration": {
+    "vehicle_kg": 71,
+    "driver_kg": 70,
+    "mass_kg": 141,
+    "ratio": "1:11",
+    "length_m": 1440,
+    "target_s": 220
+  },
+  "method_reference": "https://www.mathworks.com/help/ident/ug/definition-simulation-and-prediction.html",
+  "notes": "Source snapshots, not additional independent measurements. Holdout validation settings selected during this analysis; not a prospective blind test."
+}

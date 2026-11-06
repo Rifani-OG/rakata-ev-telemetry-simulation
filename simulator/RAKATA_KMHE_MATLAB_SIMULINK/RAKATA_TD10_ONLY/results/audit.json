@@ -1,0 +1,51 @@
+{
+  "rows": 35156,
+  "millis_resets": 4,
+  "gaps_over_05s": 24,
+  "voltage_unique": 1,
+  "satellite_unique": 1,
+  "speed_max": 35.25,
+  "current_max_A": 15.475985000000001,
+  "power_max_W": 835.7,
+  "power_VI_max_difference_W": 0.005038000000013199,
+  "train_rows": 15859,
+  "source_sha256": "312d8cc02e2f9d8fb8f6aa89ea92ac57753f1f610f67d16026ed6fa9bdd7ef31",
+  "validation": [
+    {
+      "lap": 3,
+      "speed_RMSE_kmh": 1.664480275922891,
+      "energy_real_Wh": 7.6221628968158095,
+      "energy_pred_Wh": 6.97112908295631,
+      "energy_error_Wh": -0.6510338138594998,
+      "free_distance_error_m": -4.672515027865302,
+      "free_finish_time_error_s": null
+    },
+    {
+      "lap": 6,
+      "speed_RMSE_kmh": 3.4426061888433495,
+      "energy_real_Wh": 7.481888825513859,
+      "energy_pred_Wh": 7.418258178629567,
+      "energy_error_Wh": -0.06363064688429176,
+      "free_distance_error_m": -31.656235488043876,
+      "free_finish_time_error_s": null
+    },
+    {
+      "lap": 12,
+      "speed_RMSE_kmh": 2.2106175946871343,
+      "energy_real_Wh": 6.7267423804355335,
+      "energy_pred_Wh": 6.772434988862602,
+      "energy_error_Wh": 0.04569260842706857,
+      "free_distance_error_m": -64.25645336846492,
+      "free_finish_time_error_s": null
+    },
+    {
+      "lap": 15,
+      "speed_RMSE_kmh": 2.3650463872149357,
+      "energy_real_Wh": 7.661709063617291,
+      "energy_pred_Wh": 7.183686393200575,
+      "energy_error_Wh": -0.4780226704167161,
+      "free_distance_error_m": 71.36893912728328,
+      "free_finish_time_error_s": -17.599999999999994
+    }
+  ]
+}

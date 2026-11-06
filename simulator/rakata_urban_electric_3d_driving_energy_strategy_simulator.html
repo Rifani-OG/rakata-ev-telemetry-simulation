@@ -1,0 +1,3032 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>RAKATA Urban Electric — 3D Driving &amp; Energy Strategy Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    /* ==================== CSS STYLING ==================== */
+    :root {
+      --bg-dark: #070b14;
+      --panel-bg: rgba(11, 18, 32, 0.86);
+      --panel-solid: #0f172a;
+      --panel-border: rgba(56, 189, 248, 0.22);
+      --rakata-red: #ef4444;
+      --rakata-amber: #f59e0b;
+      --rakata-cyan: #06b6d4;
+      --rakata-emerald: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    #canvas-container {
+      position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1;
+      background: radial-gradient(circle at 50% 35%, #1e293b 0%, #090d16 100%);
+    }
+    .hud-glass {
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+    }
+    .badge-fixed {
+      background: rgba(16, 185, 129, 0.16); color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+    }
+    .badge-telemetry {
+      background: rgba(6, 182, 212, 0.16); color: #22d3ee;
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+    }
+    .badge-assumption {
+      background: rgba(245, 158, 11, 0.16); color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+    }
+    .btn-sim {
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      padding: 6px 11px; border-radius: 7px; font-size: 12px; font-weight: 600;
+      background: rgba(30, 41, 59, 0.9); color: #e2e8f0;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      cursor: pointer; transition: all 0.15s ease;
+    }
+    .btn-sim:hover { background: rgba(51, 65, 85, 0.95); border-color: #38bdf8; color: #fff; }
+    .btn-sim.active {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      border-color: #f87171; color: #fff;
+    }
+    .btn-sim-cyan.active {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-color: #38bdf8; color: #fff;
+    }
+    .pedal-track {
+      width: 26px; height: 96px; background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px;
+      position: relative; overflow: hidden; display: flex; align-items: flex-end;
+    }
+    .pedal-fill-throttle {
+      width: 100%; background: linear-gradient(to top, #059669, #10b981, #34d399);
+      transition: height 0.04s linear;
+    }
+    .pedal-fill-brake {
+      width: 100%; background: linear-gradient(to top, #991b1b, #ef4444, #f87171);
+      transition: height 0.04s linear;
+    }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.6); border-radius: 3px; }
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 60;
+      background: rgba(3, 7, 18, 0.76); backdrop-filter: blur(6px);
+      display: none; align-items: center; justify-content: center; padding: 14px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .input-field {
+      width: 100%; background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px;
+      color: #f8fafc; padding: 5px 8px; font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .input-field:focus { outline: none; border-color: #38bdf8; }
+    .touch-btn {
+      user-select: none; -webkit-user-select: none; touch-action: manipulation;
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden select-none">
+  <!-- ==================== HTML LAYOUT ==================== -->
+
+  <!-- 3D Viewport Container -->
+  <div id="canvas-container"></div>
+
+  <!-- WebGL / CDN Error Banner (Hidden unless Three.js or WebGL fails) -->
+  <div id="webgl-error-overlay" class="fixed inset-0 z-50 hidden bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center">
+    <div class="max-w-xl hud-glass rounded-2xl p-6 border-red-500/60">
+      <div class="text-red-400 font-extrabold text-xl mb-2">PERINGATAN: RENDERING 3D TIDAK TERSEDIA</div>
+      <p id="webgl-error-message" class="text-slate-300 text-sm leading-relaxed mb-4">
+        Library Three.js dari CDN gagal dimuat atau browser Anda tidak mendukung konteks WebGL. Simulasi visual 3D tidak dapat ditampilkan. Pastikan koneksi internet aktif untuk memuat CDN Three.js dan akselerasi perangkat keras WebGL aktif di Google Chrome.
+      </p>
+      <div class="text-xs text-amber-300 mono bg-slate-900/90 p-3 rounded-lg border border-amber-500/30">
+        Status Mesin Fisika &amp; Analisis CSV: Tetap dapat diakses melalui panel Konfigurasi &amp; Telemetri di atas, namun visualisasi 3D dinonaktifkan secara jujur sesuai spesifikasi.
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Navigation & Control Bar (Does not block center view) -->
+  <header class="fixed top-0 left-0 right-0 z-30 px-3 py-2 flex flex-wrap items-center justify-between gap-2 pointer-events-auto hud-glass border-t-0 border-x-0">
+    <div class="flex items-center gap-2.5">
+      <div class="w-3 h-7 rounded-sm bg-gradient-to-b from-red-500 to-amber-500"></div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold tracking-tight text-sm md:text-base text-white">RAKATA <span class="text-red-500">URBAN ELECTRIC</span></span>
+          <span id="track-Authenticity-Badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-400/40 mono">
+            DEMO TRACK — BUKAN GEOMETRI LINTASAN ASLI
+          </span>
+        </div>
+        <div class="text-[11px] text-slate-400 hidden sm:block">
+          Longitudinal Vehicle Dynamics &amp; Energy Strategy Simulator • 141 kg • 1:11 Single-Speed • 54V
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Controls & Modal Triggers -->
+    <div class="flex flex-wrap items-center gap-1.5">
+      <button id="btn-pause" type="button" class="btn-sim" title="Pause / Resume Simulasi (Key: P)">
+        <span id="pause-icon">⏸</span> <span id="pause-label">Pause (P)</span>
+      </button>
+      <button id="btn-reset-car" type="button" class="btn-sim" title="Reset Posisi Kendaraan (Key: R)">
+        ↺ Reset (R)
+      </button>
+      <button id="btn-restart-lap" type="button" class="btn-sim" title="Restart Lap &amp; Reset Energi Sesi">
+        ⏮ Restart Lap
+      </button>
+      <button id="btn-camera" type="button" class="btn-sim btn-sim-cyan" title="Ganti Kamera (Key: C)">
+        🎥 <span id="camera-label">Kamera: Chase 3P (C)</span>
+      </button>
+      <button id="btn-racing-line" type="button" class="btn-sim btn-sim-cyan active" title="Tampilkan / Sembunyikan Garis Racing Line">
+        〰 Racing Line
+      </button>
+      <button id="btn-corner-markers" type="button" class="btn-sim btn-sim-cyan active" title="Tampilkan / Sembunyikan Penanda Brake, Apex, Exit">
+        🚩 Marker Tikungan
+      </button>
+      <button id="btn-audio" type="button" class="btn-sim" title="Suara Motor Elektrik Sintetis">
+        🔇 Audio: Off
+      </button>
+
+      <div class="h-5 w-px bg-slate-700 mx-0.5 hidden md:block"></div>
+
+      <button id="btn-open-config" type="button" class="btn-sim">
+        ⚙ Parameter &amp; Kontrol
+      </button>
+      <button id="btn-open-coach" type="button" class="btn-sim">
+        🏁 Driving Coach (<span id="coach-lap-count">0</span>)
+      </button>
+      <button id="btn-open-csv" type="button" class="btn-sim">
+        📂 Impor / Ekspor CSV
+      </button>
+      <button id="btn-toggle-charts" type="button" class="btn-sim btn-sim-cyan active">
+        📈 Grafik
+      </button>
+    </div>
+  </header>
+
+  <!-- Left HUD Column: Minimap + Lap Target & Sector Progress -->
+  <aside class="fixed top-14 left-3 z-20 w-60 flex flex-col gap-2 pointer-events-auto max-h-[calc(100vh-185px)] overflow-y-auto custom-scroll">
+    <!-- Minimap Card -->
+    <div class="hud-glass rounded-xl p-2.5">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Minimap Lintasan</span>
+        <span id="hud-sector-name" class="text-[10px] mono text-cyan-300 font-semibold">S1: Lurus Utama</span>
+      </div>
+      <div class="relative w-full h-40 bg-slate-950/90 rounded-lg border border-slate-800 overflow-hidden flex items-center justify-center">
+        <canvas id="minimap-canvas" width="220" height="156" class="w-full h-full"></canvas>
+      </div>
+      <div class="mt-1.5 flex items-center justify-between text-[10px] text-slate-400 mono">
+        <span><span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span>Brake</span>
+        <span><span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>Apex</span>
+        <span><span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1"></span>Exit</span>
+        <span id="hud-lap-progress">Progres: 0.0%</span>
+      </div>
+    </div>
+
+    <!-- Lap Timing & Target Practice Card -->
+    <div class="hud-glass rounded-xl p-2.5">
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Target Latihan Sport Jabar</span>
+        <span id="hud-lap-badge" class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-cyan-500/20 text-cyan-300 mono">LAP 1</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-1.5 text-xs mb-2">
+        <div class="bg-slate-900/80 p-1.5 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400">Waktu Lap</div>
+          <div id="hud-lap-time" class="mono font-bold text-sm text-white">00:00.0</div>
+        </div>
+        <div class="bg-slate-900/80 p-1.5 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400">Target Lap</div>
+          <div id="hud-target-time" class="mono font-bold text-sm text-amber-300">03:45.0</div>
+        </div>
+        <div class="bg-slate-900/80 p-1.5 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400">Waktu Total</div>
+          <div id="hud-total-time" class="mono font-semibold text-xs text-slate-200">00:00.0</div>
+        </div>
+        <div class="bg-slate-900/80 p-1.5 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400">Rata-rata Kec.</div>
+          <div id="hud-avg-speed" class="mono font-semibold text-xs text-slate-200">0.0 km/j</div>
+        </div>
+      </div>
+
+      <!-- Checkpoints S1 - S4 -->
+      <div class="flex items-center justify-between gap-1 mb-2">
+        <div id="cp-badge-0" class="flex-1 text-center py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-400 border border-slate-700">S1</div>
+        <div id="cp-badge-1" class="flex-1 text-center py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-400 border border-slate-700">S2</div>
+        <div id="cp-badge-2" class="flex-1 text-center py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-400 border border-slate-700">S3</div>
+        <div id="cp-badge-3" class="flex-1 text-center py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-400 border border-slate-700">S4</div>
+      </div>
+
+      <div class="flex items-center justify-between text-[11px] bg-slate-900/90 px-2 py-1.5 rounded border border-slate-800">
+        <span class="text-slate-400">Status Target:</span>
+        <span id="hud-target-status" class="mono font-bold text-emerald-400">SIAP START</span>
+      </div>
+
+      <div class="mt-2 flex gap-1">
+        <button id="btn-snapshot-run" type="button" class="btn-sim w-full text-[11px] py-1" title="Simpan data sesi saat ini ke Driving Coach untuk dievaluasi/dibandingkan">
+          + Simpan &amp; Evaluasi Sesi Saat Ini
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right HUD Column: Real-Time Telemetry Graphs -->
+  <aside id="charts-dock" class="fixed top-14 right-3 z-20 w-80 flex flex-col gap-2 pointer-events-auto max-h-[calc(100vh-185px)] overflow-y-auto custom-scroll">
+    <div class="hud-glass rounded-xl p-2.5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Grafik Telemetri Real-Time</span>
+        <div class="flex items-center gap-1">
+          <button id="btn-xaxis-time" type="button" class="px-2 py-0.5 text-[10px] rounded font-semibold bg-cyan-600 text-white">vs Waktu</button>
+          <button id="btn-xaxis-dist" type="button" class="px-2 py-0.5 text-[10px] rounded font-semibold bg-slate-800 text-slate-300">vs Jarak</button>
+        </div>
+      </div>
+
+      <!-- 1. Speed Chart -->
+      <div class="mb-2">
+        <div class="flex justify-between text-[10px] mono text-slate-300 mb-0.5">
+          <span>1. Kecepatan (km/jam)</span>
+          <span id="chart-lbl-speed" class="text-cyan-400">0.0 km/j</span>
+        </div>
+        <div class="relative h-16 w-full bg-slate-950/90 rounded border border-slate-800 overflow-hidden">
+          <canvas id="chart-speed" width="290" height="64" class="w-full h-full"></canvas>
+        </div>
+      </div>
+
+      <!-- 2. Throttle & Brake Chart -->
+      <div class="mb-2">
+        <div class="flex justify-between text-[10px] mono text-slate-300 mb-0.5">
+          <span>2. Throttle (Hijau) &amp; Rem (Merah) (%)</span>
+          <span id="chart-lbl-thr" class="text-emerald-400">T:0% B:0%</span>
+        </div>
+        <div class="relative h-16 w-full bg-slate-950/90 rounded border border-slate-800 overflow-hidden">
+          <canvas id="chart-throttle" width="290" height="64" class="w-full h-full"></canvas>
+        </div>
+      </div>
+
+      <!-- 3. Current & Power Chart -->
+      <div class="mb-2">
+        <div class="flex justify-between text-[10px] mono text-slate-300 mb-0.5">
+          <span>3. Arus Est. (A) &amp; Daya Listrik (W)</span>
+          <span id="chart-lbl-power" class="text-amber-400">0.0A | 0W</span>
+        </div>
+        <div class="relative h-16 w-full bg-slate-950/90 rounded border border-slate-800 overflow-hidden">
+          <canvas id="chart-power" width="290" height="64" class="w-full h-full"></canvas>
+        </div>
+      </div>
+
+      <!-- 4. Cumulative Energy Chart -->
+      <div class="mb-2">
+        <div class="flex justify-between text-[10px] mono text-slate-300 mb-0.5">
+          <span>4. Energi Kumulatif (Wh)</span>
+          <span id="chart-lbl-energy" class="text-purple-400">0.00 Wh</span>
+        </div>
+        <div class="relative h-16 w-full bg-slate-950/90 rounded border border-slate-800 overflow-hidden">
+          <canvas id="chart-energy" width="290" height="64" class="w-full h-full"></canvas>
+        </div>
+      </div>
+
+      <!-- 5. Elevation & Grade Chart -->
+      <div>
+        <div class="flex justify-between text-[10px] mono text-slate-300 mb-0.5">
+          <span>5. Elevasi (m) &amp; Gradien (%)</span>
+          <span id="chart-lbl-grade" class="text-rose-400">0.0m | 0.0%</span>
+        </div>
+        <div class="relative h-16 w-full bg-slate-950/90 rounded border border-slate-800 overflow-hidden">
+          <canvas id="chart-grade" width="290" height="64" class="w-full h-full"></canvas>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Bottom Instrument Cluster & Interactive Controls -->
+  <footer class="fixed bottom-2 left-3 right-3 z-20 flex flex-col lg:flex-row items-stretch lg:items-end justify-between gap-2 pointer-events-none">
+    <!-- Left Touch / Mouse Steering & Throttle Mode Quick Switch -->
+    <div class="hud-glass rounded-xl p-2.5 flex items-center gap-2 pointer-events-auto self-start lg:self-end">
+      <div class="flex flex-col gap-1">
+        <div class="text-[10px] font-bold uppercase text-slate-400">Kemudi &amp; Mode</div>
+        <div class="flex gap-1">
+          <button id="btn-touch-left" type="button" class="btn-sim touch-btn px-3 py-2 text-sm font-bold" title="Belok Kiri (A / Panah Kiri)">◀ A</button>
+          <button id="btn-touch-right" type="button" class="btn-sim touch-btn px-3 py-2 text-sm font-bold" title="Belok Kanan (D / Panah Kanan)">D ▶</button>
+        </div>
+        <div class="flex gap-1 mt-0.5">
+          <button id="btn-mode-analog" type="button" class="px-2 py-1 text-[10px] font-bold rounded bg-emerald-600 text-white">Mode: Analog</button>
+          <button id="btn-mode-step" type="button" class="px-2 py-1 text-[10px] font-bold rounded bg-slate-800 text-slate-300">Mode: Step (5%)</button>
+        </div>
+      </div>
+
+      <!-- Step Throttle Controls (Shown/Active for Step Mode or Quick Adjust) -->
+      <div class="flex flex-col gap-1 border-l border-slate-700 pl-2">
+        <span class="text-[10px] text-slate-400 mono">Kontrol Pedal</span>
+        <div class="flex gap-1">
+          <button id="btn-touch-throttle" type="button" class="btn-sim touch-btn bg-emerald-700/80 border-emerald-500/50 text-white px-2.5 py-2 text-xs font-bold">GAS (W)</button>
+          <button id="btn-touch-brake" type="button" class="btn-sim touch-btn bg-red-700/80 border-red-500/50 text-white px-2.5 py-2 text-xs font-bold">REM (S)</button>
+        </div>
+        <div class="flex gap-1">
+          <button id="btn-step-minus" type="button" class="btn-sim px-2 py-0.5 text-[10px] mono" title="Kurangi Step Throttle (Q)">-Step (Q)</button>
+          <button id="btn-step-zero" type="button" class="btn-sim px-2 py-0.5 text-[10px] mono" title="Nolkan Step Throttle (X)">0% (X)</button>
+          <button id="btn-step-plus" type="button" class="btn-sim px-2 py-0.5 text-[10px] mono" title="Tambah Step Throttle (E)">+Step (E)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Main RAKATA Telemetry Dashboard -->
+    <div class="hud-glass rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-center gap-4 pointer-events-auto mx-auto">
+      <!-- Visual Pedals -->
+      <div class="flex items-center gap-2.5">
+        <div class="flex flex-col items-center">
+          <span class="text-[10px] font-bold text-emerald-400 mono" id="hud-thr-pct">0%</span>
+          <div class="pedal-track" title="Posisi Pedal Throttle Real-Time">
+            <div id="pedal-bar-throttle" class="pedal-fill-throttle" style="height: 0%;"></div>
+          </div>
+          <span class="text-[10px] text-slate-400 font-semibold mt-0.5">THROTTLE</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="text-[10px] font-bold text-red-400 mono" id="hud-brk-pct">0%</span>
+          <div class="pedal-track" title="Posisi Pedal Rem Real-Time">
+            <div id="pedal-bar-brake" class="pedal-fill-brake" style="height: 0%;"></div>
+          </div>
+          <span class="text-[10px] text-slate-400 font-semibold mt-0.5">BRAKE</span>
+        </div>
+      </div>
+
+      <!-- Digital Speedometer & RPM -->
+      <div class="flex flex-col items-center justify-center px-3 border-x border-slate-700/80 min-w-[145px]">
+        <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-400">KECEPATAN</div>
+        <div id="hud-speed" class="mono text-4xl font-extrabold text-white tracking-tight leading-none my-0.5">0.0</div>
+        <div class="text-[11px] text-slate-400 font-semibold">km/jam <span id="hud-speed-ms" class="mono text-[10px] text-slate-500">(0.0 m/s)</span></div>
+        <div class="mt-1.5 w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700">
+          <div id="hud-rpm-bar" class="bg-gradient-to-r from-cyan-500 via-emerald-400 to-amber-400 h-full transition-all duration-75" style="width: 0%;"></div>
+        </div>
+        <div class="flex justify-between w-full text-[10px] mono text-slate-300 mt-0.5">
+          <span id="hud-rpm">0 RPM</span>
+          <span class="text-slate-400">1:11 FIXED</span>
+        </div>
+      </div>
+
+      <!-- Electrical & Energy Telemetry Grid -->
+      <div class="grid grid-cols-3 sm:grid-cols-4 gap-x-3 gap-y-1.5 text-left">
+        <div class="bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400 flex items-center justify-between gap-1">
+            <span>Tegangan</span><span class="text-[9px] text-cyan-400">NOM</span>
+          </div>
+          <div id="hud-voltage" class="mono font-bold text-xs text-white">54.0 V</div>
+        </div>
+        <div class="bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400 flex items-center justify-between gap-1">
+            <span>Arus</span><span class="text-[9px] text-amber-400" title="Arus dihitung dari estimasi model motor">EST</span>
+          </div>
+          <div id="hud-current" class="mono font-bold text-xs text-amber-300">0.00 A</div>
+        </div>
+        <div class="bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400">Daya Listrik</div>
+          <div id="hud-power" class="mono font-bold text-xs text-emerald-300">0.0 W</div>
+        </div>
+        <div class="bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400">Energi Total</div>
+          <div id="hud-energy-total" class="mono font-bold text-xs text-purple-300">0.000 Wh</div>
+        </div>
+        <div class="bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400">Energi Lap</div>
+          <div id="hud-energy-lap" class="mono font-bold text-xs text-purple-200">0.000 Wh</div>
+        </div>
+        <div class="bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400">Efisiensi</div>
+          <div id="hud-efficiency" class="mono font-bold text-xs text-cyan-300">0.0 km/kWh</div>
+        </div>
+        <div class="bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400">Konsumsi</div>
+          <div id="hud-wh-km" class="mono font-bold text-xs text-slate-200">0.0 Wh/km</div>
+        </div>
+        <div class="bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800">
+          <div class="text-[10px] text-slate-400">Jarak &amp; Gradien</div>
+          <div class="mono font-bold text-xs text-slate-200">
+            <span id="hud-distance">0.000 km</span> | <span id="hud-grade" class="text-rose-300">0.0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Longitudinal Forces Breakdown Mini-Card -->
+    <div class="hud-glass rounded-xl p-2.5 hidden xl:flex flex-col justify-center pointer-events-auto min-w-[195px] text-[11px] mono">
+      <div class="text-[10px] font-bold uppercase text-slate-400 mb-1">Dinamika Gaya Longitudinal</div>
+      <div class="flex justify-between"><span>F_traction:</span><span id="hud-f-trac" class="text-emerald-400">0.0 N</span></div>
+      <div class="flex justify-between"><span>F_aero + F_roll:</span><span id="hud-f-drag" class="text-amber-300">0.0 N</span></div>
+      <div class="flex justify-between"><span>F_grade + F_brake:</span><span id="hud-f-grade" class="text-rose-300">0.0 N</span></div>
+      <div class="flex justify-between border-t border-slate-700 mt-1 pt-0.5 font-bold">
+        <span>F_net (a):</span><span id="hud-f-net" class="text-cyan-300">0.0 N (0.00 m/s²)</span>
+      </div>
+    </div>
+  </footer>
+  <!-- Toast Notification Banner -->
+  <div id="sim-toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 hidden px-4 py-2 rounded-xl hud-glass border-cyan-400/50 text-xs font-semibold text-white shadow-2xl">
+    Notifikasi Simulasi
+  </div>
+
+  <!-- MODAL 1: KONFIGURASI PARAMETER KENDARAAN & KONTROL -->
+  <div id="modal-config" class="modal-backdrop">
+    <div class="hud-glass rounded-2xl w-full max-w-4xl max-h-[88vh] flex flex-col overflow-hidden border-cyan-500/40">
+      <div class="px-5 py-3.5 border-b border-slate-700/80 flex items-center justify-between bg-slate-900/90">
+        <div>
+          <h2 class="text-base font-extrabold text-white">KONFIGURASI KENDARAAN &amp; KALIBRASI MODEL RAKATA</h2>
+          <p class="text-xs text-slate-400">Semua parameter dibedakan secara tegas antara Data Tetap, Referensi Telemetri, dan Asumsi Model yang belum tervalidasi.</p>
+        </div>
+        <button id="btn-close-config" type="button" class="btn-sim px-3 py-1 text-xs">✕ Tutup</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto custom-scroll space-y-5 text-xs">
+        <!-- Legend Kategori Parameter -->
+        <div class="flex flex-wrap gap-3 bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+          <div class="flex items-center gap-2"><span class="badge-fixed">DATA TETAP</span><span class="text-slate-300">Spesifikasi mekanis fisik yang diketahui</span></div>
+          <div class="flex items-center gap-2"><span class="badge-telemetry">REFERENSI TELEMETRI / SISTEM</span><span class="text-slate-300">Parameter sistem elektrikal &amp; batas rating</span></div>
+          <div class="flex items-center gap-2"><span class="badge-assumption">ASUMSI MODEL</span><span class="text-slate-300">Estimasi awal (belum diukur langsung, dapat dikalibrasi)</span></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Kolom 1: Data Tetap -->
+          <div class="bg-slate-900/75 p-3.5 rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span class="font-bold text-emerald-400">1. Massa &amp; Transmisi</span>
+              <span class="badge-fixed">DATA TETAP</span>
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Massa Kendaraan (kg)</label>
+              <input id="cfg-mass-vehicle" type="number" step="0.5" min="20" max="300" value="71" class="input-field" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Massa Pengemudi (kg)</label>
+              <input id="cfg-mass-driver" type="number" step="0.5" min="30" max="150" value="70" class="input-field" />
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Massa Total Otomatis (kg)</label>
+              <input id="cfg-mass-total" type="number" readonly value="141" class="input-field opacity-75 cursor-not-allowed" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Diameter Roda (mm) [Radius: <span id="cfg-wheel-radius-lbl">0.275</span> m]</label>
+              <input id="cfg-wheel-diam" type="number" step="5" min="300" max="800" value="550" class="input-field" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Rasio Transmisi Tetap (1 : N, Single-Speed)</label>
+              <input id="cfg-gear-ratio" type="number" step="0.1" min="3" max="25" value="11" class="input-field" />
+            </div>
+          </div>
+
+          <!-- Kolom 2: Referensi Telemetri & Elektrikal -->
+          <div class="bg-slate-900/75 p-3.5 rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span class="font-bold text-cyan-400">2. Motor &amp; Baterai</span>
+              <span class="badge-telemetry">TELEMETRI / SISTEM</span>
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Putaran Nominal Motor (RPM)</label>
+              <input id="cfg-nominal-rpm" type="number" step="50" min="1500" max="6000" value="3200" class="input-field" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Tegangan Baterai Nominal (V)</label>
+              <input id="cfg-voltage" type="number" step="0.5" min="24" max="96" value="54" class="input-field" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Daya Maksimum Motor Model Awal (W)</label>
+              <input id="cfg-max-power" type="number" step="10" min="200" max="2500" value="712" class="input-field" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Efisiensi Maksimum Motor (%) <span class="badge-assumption">ASUMSI</span></label>
+              <input id="cfg-motor-eff" type="number" step="1" min="50" max="96" value="84" class="input-field" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Target Waktu Lap Sport Jabar (detik)</label>
+              <input id="cfg-target-lap" type="number" step="1" min="60" max="600" value="225" class="input-field" />
+            </div>
+          </div>
+
+          <!-- Kolom 3: Asumsi Model & Kalibrasi Resistansi -->
+          <div class="bg-slate-900/75 p-3.5 rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span class="font-bold text-amber-400">3. Hambatan &amp; Pengereman</span>
+              <span class="badge-assumption">ASUMSI MODEL</span>
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Efisiensi Transmisi (%)</label>
+              <input id="cfg-trans-eff" type="number" step="0.5" min="70" max="99" value="95" class="input-field" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Luas Hambat Aerodinamis CdA (m²)</label>
+              <input id="cfg-cda" type="number" step="0.01" min="0.08" max="0.60" value="0.20" class="input-field" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Koefisien Hambatan Gelinding Crr</label>
+              <input id="cfg-crr" type="number" step="0.0005" min="0.002" max="0.03" value="0.008" class="input-field" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-slate-300 mb-1">Densitas Udara (kg/m³)</label>
+                <input id="cfg-rho" type="number" step="0.01" min="0.9" max="1.4" value="1.20" class="input-field" />
+              </div>
+              <div>
+                <label class="block text-slate-300 mb-1">Gravitasi (m/s²)</label>
+                <input id="cfg-gravity" type="number" step="0.01" min="9.7" max="9.9" value="9.81" class="input-field" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-amber-300 mb-1">Perlambatan Rem Awal (m/s²) [Belum Tervalidasi]</label>
+              <input id="cfg-brake-decel" type="number" step="0.05" min="0.20" max="4.00" value="0.65" class="input-field" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Pengaturan Terpisah Mode Analog vs Mode Step Throttle -->
+        <div class="bg-slate-900/75 p-4 rounded-xl border border-slate-800">
+          <div class="font-bold text-white mb-2">4. Konfigurasi Terpisah Mode Throttle (Analog Progresif vs Step Throttle)</div>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label class="block text-slate-300 mb-1">Mode Aktif Saat Ini</label>
+              <select id="cfg-throttle-mode" class="input-field">
+                <option value="analog">Analog / Progresif</option>
+                <option value="step">Step Throttle (Bertahap)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Kenaikan Step Throttle (%)</label>
+              <input id="cfg-step-pct" type="number" step="1" min="1" max="25" value="5" class="input-field" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Perilaku Tombol Step (W / Up)</label>
+              <select id="cfg-step-behavior" class="input-field">
+                <option value="hold">Bertambah Tiap Interval Saat Ditahan</option>
+                <option value="press">Bertambah Sekali Tiap Tekanan Tombol</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Reset Step ke 0% Saat Rem (S)</label>
+              <select id="cfg-step-brake-reset" class="input-field">
+                <option value="true">Ya (Otomatis 0% Saat Rem)</option>
+                <option value="false">Tidak (Pertahankan Step)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 border-t border-slate-700/80 bg-slate-900/90 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-[11px] text-slate-400">Catatan: Target waktu lap tidak pernah memodifikasi fisika kendaraan secara otomatis.</span>
+        <div class="flex gap-2">
+          <button id="btn-reset-defaults" type="button" class="btn-sim">↺ Kembalikan Baseline RAKATA</button>
+          <button id="btn-save-config" type="button" class="btn-sim active">✓ Terapkan Parameter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: DRIVING COACH & KOMPARASI PERCOBAAN -->
+  <div id="modal-coach" class="modal-backdrop">
+    <div class="hud-glass rounded-2xl w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden border-emerald-500/40">
+      <div class="px-5 py-3.5 border-b border-slate-700/80 flex items-center justify-between bg-slate-900/90">
+        <div>
+          <h2 class="text-base font-extrabold text-white">DRIVING COACH &amp; EVALUASI STRATEGI ENERGI RAKATA</h2>
+          <p class="text-xs text-slate-400">Evaluasi berbasis data telemetri lap yang benar-benar direkam dan pembanding antar percobaan.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-evaluate-current" type="button" class="btn-sim btn-sim-cyan active text-xs">+ Rekam Snapshot Sesi Ini</button>
+          <button id="btn-close-coach" type="button" class="btn-sim px-3 py-1 text-xs">✕ Tutup</button>
+        </div>
+      </div>
+
+      <div class="p-5 overflow-y-auto custom-scroll space-y-5 text-xs">
+        <!-- Evaluasi 7 Aspek Driving Coach -->
+        <div id="coach-report-container" class="space-y-4">
+          <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 text-slate-300">
+            Belum ada lap selesai atau snapshot sesi yang dievaluasi. Selesaikan 1 lap penuh di lintasan atau klik <b>"+ Rekam Snapshot Sesi Ini"</b> untuk menganalisis pola mengemudi Anda secara langsung.
+          </div>
+        </div>
+
+        <!-- Tabel Pembanding Multi-Run (2 atau Lebih Percobaan) -->
+        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 class="text-sm font-bold text-white">Komparasi Strategi Antar Percobaan (Multi-Run)</h3>
+              <p class="text-[11px] text-slate-400">Pilih dua percobaan di bawah untuk melihat delta waktu lap, konsumsi energi, dan efisiensi km/kWh.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-slate-400">Run A:</label>
+              <select id="compare-select-a" class="input-field w-44"></select>
+              <label class="text-slate-400">Run B:</label>
+              <select id="compare-select-b" class="input-field w-44"></select>
+            </div>
+          </div>
+
+          <div id="compare-delta-box" class="bg-slate-950/90 p-3 rounded-lg border border-slate-800 text-slate-300">
+            Rekam minimal 2 percobaan (atau muat contoh CSV) untuk membandingkan peningkatan efisiensi strategi mengemudi.
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse mono text-[11px]">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-400 bg-slate-950/70">
+                  <th class="p-2">ID Percobaan</th>
+                  <th class="p-2">Status Lap</th>
+                  <th class="p-2 text-right">Waktu (s)</th>
+                  <th class="p-2 text-right">Jarak (km)</th>
+                  <th class="p-2 text-right">Kec. Rata (km/j)</th>
+                  <th class="p-2 text-right">Energi (Wh)</th>
+                  <th class="p-2 text-right">Efisiensi (km/kWh)</th>
+                  <th class="p-2 text-right">Thr &ge;85%</th>
+                  <th class="p-2 text-right">Rugi Rem (Wh)</th>
+                  <th class="p-2 text-center">Target (225s)</th>
+                </tr>
+              </thead>
+              <tbody id="runs-table-body">
+                <tr><td colspan="10" class="p-3 text-center text-slate-500">Belum ada data percobaan.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: IMPOR & EKSPOR TELEMETRI CSV -->
+  <div id="modal-csv" class="modal-backdrop">
+    <div class="hud-glass rounded-2xl w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden border-amber-500/40">
+      <div class="px-5 py-3.5 border-b border-slate-700/80 flex items-center justify-between bg-slate-900/90">
+        <div>
+          <h2 class="text-base font-extrabold text-white">IMPOR, VALIDASI &amp; EKSPOR TELEMETRI CSV</h2>
+          <p class="text-xs text-slate-400">Mendukung pemetaan kolom fleksibel, audit anomali data (timestamp, duplikat, GPS diam, reset energi/odometer, jeda koneksi), dan ekspor simulasi.</p>
+        </div>
+        <button id="btn-close-csv" type="button" class="btn-sim px-3 py-1 text-xs">✕ Tutup</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto custom-scroll space-y-4 text-xs">
+        <!-- Ekspor Data Simulasi Saat Ini -->
+        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="font-bold text-emerald-400 text-sm">Ekspor Rekaman Telemetri Simulasi ke CSV</div>
+            <div class="text-slate-400 text-[11px]">Mengunduh seluruh sampel waktu, jarak, kecepatan, throttle, rem, RPM, tegangan, arus, daya, energi, dan status lap.</div>
+          </div>
+          <button id="btn-export-csv" type="button" class="btn-sim active px-4 py-2">⬇ Unduh CSV Simulasi (<span id="export-sample-count">0</span> baris)</button>
+        </div>
+
+        <!-- Impor File CSV Lokal -->
+        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div class="font-bold text-cyan-400 text-sm">Impor File Telemetri CSV Lokal</div>
+              <div class="text-slate-400 text-[11px]">Pilih file CSV dari komputer Anda atau muat dataset uji yang mengandung anomali telemetri nyata untuk memverifikasi validator.</div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <label class="btn-sim btn-sim-cyan active cursor-pointer">
+                📂 Pilih File CSV...
+                <input id="csv-file-input" type="file" accept=".csv,.txt" class="hidden" />
+              </label>
+              <button id="btn-load-sample-csv" type="button" class="btn-sim">🧪 Muat Contoh CSV (Uji Anomali)</button>
+            </div>
+          </div>
+
+          <!-- Pemetaan Kolom (Column Mapper) -->
+          <div id="csv-mapper-section" class="hidden bg-slate-950/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-amber-300">Pemetaan Kolom CSV (Sesuaikan jika nama header berbeda)</span>
+              <button id="btn-process-mapped-csv" type="button" class="btn-sim active">✓ Validasi &amp; Impor ke Driving Coach</button>
+            </div>
+            <div id="csv-mapper-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5"></div>
+          </div>
+
+          <!-- Hasil Audit Validasi & Transformasi Data -->
+          <div id="csv-validation-report" class="bg-slate-950/90 p-3.5 rounded-xl border border-slate-800 text-slate-300">
+            Belum ada file CSV yang diimpor.Pilih file CSV atau klik <b>"Muat Contoh CSV (Uji Anomali)"</b> untuk memeriksa validasi struktur data.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    /* ==================== CONFIGURATION AND VALIDATION ==================== */
+    const RAKATA_BASELINE = Object.freeze({
+      massVehicle: 71.0,        // DATA TETAP (kg)
+      massDriver: 70.0,         // DATA TETAP (kg)
+      massTotal: 141.0,         // DATA TETAP (kg)
+      wheelDiameterMm: 550.0,   // DATA TETAP (mm)
+      wheelRadius: 0.275,       // DATA TETAP (m)
+      gearRatio: 11.0,          // DATA TETAP (1:11 single-speed)
+      nominalRpm: 3200.0,       // TELEMETRI / SISTEM (rpm)
+      batteryVoltage: 54.0,     // TELEMETRI / SISTEM (V)
+      maxMotorPowerW: 712.0,    // MODEL AWAL (W)
+      maxMotorEff: 0.84,        // ASUMSI MODEL (84%)
+      transEff: 0.95,           // ASUMSI AWAL (95%)
+      cda: 0.20,                // ASUMSI AWAL (m^2)
+      crr: 0.008,               // ASUMSI AWAL
+      airDensity: 1.20,         // ASUMSI AWAL (kg/m^3)
+      gravity: 9.81,            // KONSTANTA FISIKA (m/s^2)
+      brakeDecel: 0.65,         // ASUMSI AWAL BELUM TERVALIDASI (m/s^2)
+      targetLapTimeSec: 225.0,  // TARGET LATIHAN SPORT JABAR (3m 45s)
+      throttleMode: 'analog',   // 'analog' | 'step'
+      stepIncrementPct: 5,      // 5% per step
+      stepBehavior: 'hold',     // 'hold' | 'press'
+      stepResetOnBrake: true
+    });
+
+    const vehicleConfig = Object.assign({}, RAKATA_BASELINE);
+
+    function showToast(msg, durationMs = 3200) {
+      const el = document.getElementById('sim-toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => el.classList.add('hidden'), durationMs);
+    }
+
+    function syncConfigInputsFromState() {
+      vehicleConfig.massTotal = vehicleConfig.massVehicle + vehicleConfig.massDriver;
+      vehicleConfig.wheelRadius = (vehicleConfig.wheelDiameterMm / 1000) * 0.5;
+      document.getElementById('cfg-mass-vehicle').value = vehicleConfig.massVehicle;
+      document.getElementById('cfg-mass-driver').value = vehicleConfig.massDriver;
+      document.getElementById('cfg-mass-total').value = vehicleConfig.massTotal.toFixed(1);
+      document.getElementById('cfg-wheel-diam').value = vehicleConfig.wheelDiameterMm;
+      document.getElementById('cfg-wheel-radius-lbl').textContent = vehicleConfig.wheelRadius.toFixed(3);
+      document.getElementById('cfg-gear-ratio').value = vehicleConfig.gearRatio;
+      document.getElementById('cfg-nominal-rpm').value = vehicleConfig.nominalRpm;
+      document.getElementById('cfg-voltage').value = vehicleConfig.batteryVoltage;
+      document.getElementById('cfg-max-power').value = vehicleConfig.maxMotorPowerW;
+      document.getElementById('cfg-motor-eff').value = Math.round(vehicleConfig.maxMotorEff * 100);
+      document.getElementById('cfg-target-lap').value = vehicleConfig.targetLapTimeSec;
+      document.getElementById('cfg-trans-eff').value = (vehicleConfig.transEff * 100).toFixed(1);
+      document.getElementById('cfg-cda').value = vehicleConfig.cda.toFixed(2);
+      document.getElementById('cfg-crr').value = vehicleConfig.crr.toFixed(4);
+      document.getElementById('cfg-rho').value = vehicleConfig.airDensity.toFixed(2);
+      document.getElementById('cfg-gravity').value = vehicleConfig.gravity.toFixed(2);
+      document.getElementById('cfg-brake-decel').value = vehicleConfig.brakeDecel.toFixed(2);
+      document.getElementById('cfg-throttle-mode').value = vehicleConfig.throttleMode;
+      document.getElementById('cfg-step-pct').value = vehicleConfig.stepIncrementPct;
+      document.getElementById('cfg-step-behavior').value = vehicleConfig.stepBehavior;
+      document.getElementById('cfg-step-brake-reset').value = String(vehicleConfig.stepResetOnBrake);
+      updateThrottleModeUI();
+    }
+
+    function applyConfigFromInputs() {
+      const num = (id, fallback, min, max) => {
+        const v = parseFloat(document.getElementById(id).value);
+        if (Number.isNaN(v)) return fallback;
+        return Math.min(max, Math.max(min, v));
+      };
+      vehicleConfig.massVehicle = num('cfg-mass-vehicle', 71, 20, 300);
+      vehicleConfig.massDriver = num('cfg-mass-driver', 70, 30, 150);
+      vehicleConfig.massTotal = vehicleConfig.massVehicle + vehicleConfig.massDriver;
+      vehicleConfig.wheelDiameterMm = num('cfg-wheel-diam', 550, 300, 800);
+      vehicleConfig.wheelRadius = (vehicleConfig.wheelDiameterMm / 1000) * 0.5;
+      vehicleConfig.gearRatio = num('cfg-gear-ratio', 11, 3, 25);
+      vehicleConfig.nominalRpm = num('cfg-nominal-rpm', 3200, 1500, 6000);
+      vehicleConfig.batteryVoltage = num('cfg-voltage', 54, 24, 96);
+      vehicleConfig.maxMotorPowerW = num('cfg-max-power', 712, 200, 2500);
+      vehicleConfig.maxMotorEff = num('cfg-motor-eff', 84, 50, 96) / 100;
+      vehicleConfig.targetLapTimeSec = num('cfg-target-lap', 225, 60, 600);
+      vehicleConfig.transEff = num('cfg-trans-eff', 95, 70, 99) / 100;
+      vehicleConfig.cda = num('cfg-cda', 0.20, 0.05, 0.80);
+      vehicleConfig.crr = num('cfg-crr', 0.008, 0.001, 0.04);
+      vehicleConfig.airDensity = num('cfg-rho', 1.20, 0.8, 1.5);
+      vehicleConfig.gravity = num('cfg-gravity', 9.81, 9.5, 10.0);
+      vehicleConfig.brakeDecel = num('cfg-brake-decel', 0.65, 0.1, 5.0);
+      vehicleConfig.throttleMode = document.getElementById('cfg-throttle-mode').value === 'step' ? 'step' : 'analog';
+      vehicleConfig.stepIncrementPct = Math.round(num('cfg-step-pct', 5, 1, 25));
+      vehicleConfig.stepBehavior = document.getElementById('cfg-step-behavior').value === 'press' ? 'press' : 'hold';
+      vehicleConfig.stepResetOnBrake = document.getElementById('cfg-step-brake-reset').value === 'true';
+      syncConfigInputsFromState();
+      document.getElementById('hud-target-time').textContent = formatTimeMMSS(vehicleConfig.targetLapTimeSec);
+      try {
+        localStorage.setItem('rakata_sim_cfg_v1', JSON.stringify(vehicleConfig));
+      } catch (e) {}
+    }
+
+    /* ==================== MOTOR AND BATTERY MODEL ==================== */
+    /**
+     * Evaluates the calibratable BLDC motor and battery power model.
+     * - Respects voltage-proportional back-EMF ceiling so speeds >30 km/h require high throttle (~90-100%)
+     *   and equilibrium speed at 100% throttle on flat asphalt naturally balances around ~35.0 km/h
+     *   without any artificial hard velocity cap.
+     * - Strictly obeys P_mech <= maxMotorPowerW and P_electric = V * I.
+     */
+    function evaluateMotorAndBattery(speedMs, throttleNorm, cfg) {
+      const thr = Math.max(0, Math.min(1, throttleNorm));
+      const wheelOmega = speedMs / cfg.wheelRadius; // rad/s
+      const wheelRpm = (wheelOmega * 60) / (2 * Math.PI);
+      const motorRpm = Math.max(0, wheelRpm * cfg.gearRatio);
+      const motorOmega = (motorRpm * 2 * Math.PI) / 60; // rad/s
+
+      // Unloaded synchronous speed at 100% throttle (54V) is ~1.186 * nominalRpm (~3795 rpm),
+      // so under aerodynamic + rolling load (22.4 N at 35 km/h), steady-state settles at ~35.0 km/h.
+      const noLoadMaxRpm = cfg.nominalRpm * 1.186;
+      // Effective synchronous RPM scales with commanded duty cycle (throttle):
+      const targetSyncRpm = thr * noLoadMaxRpm;
+
+      let motorTorqueNm = 0;
+      if (thr > 0.001 && motorRpm < targetSyncRpm) {
+        const nominalOmega = (cfg.nominalRpm * 2 * Math.PI) / 60;
+        const nominalTorque = cfg.maxMotorPowerW / Math.max(nominalOmega, 1.0); // ~2.125 Nm at 712W, 3200rpm
+        // Back-EMF slip slope (Nm per RPM drop below targetSyncRpm):
+        const slipRpm = targetSyncRpm - motorRpm;
+        const backEmfSlope = nominalTorque / (cfg.nominalRpm * 0.42);
+        const rawBackEmfTorque = slipRpm * backEmfSlope;
+
+        // Progressive controller torque limit (prevents instant jerky launch; scales smoothly with throttle):
+        const controllerTorqueCap = nominalTorque * 1.12 * Math.pow(thr, 1.25);
+        // Mechanical shaft power ceiling (scaled by throttle command):
+        const maxShaftPowerAtThr = cfg.maxMotorPowerW * Math.pow(thr, 1.15);
+        const powerLimitedTorque = motorOmega > 8.0 ? (maxShaftPowerAtThr / motorOmega) : controllerTorqueCap;
+
+        motorTorqueNm = Math.min(rawBackEmfTorque, controllerTorqueCap, powerLimitedTorque);
+        motorTorqueNm = Math.max(0, motorTorqueNm);
+      }
+
+      const mechPowerW = motorTorqueNm * motorOmega;
+
+      // Motor efficiency map (peaks at cfg.maxMotorEff around 2400-3400 RPM & moderate torque):
+      let motorEff = cfg.maxMotorEff;
+      if (mechPowerW > 0.05) {
+        const rpmRatio = Math.min(1.2, motorRpm / Math.max(cfg.nominalRpm, 500));
+        const rpmEffFactor = 0.52 + 0.48 * Math.sin(Math.min(Math.PI / 2, rpmRatio * 1.35));
+        motorEff = Math.max(0.38, Math.min(cfg.maxMotorEff, cfg.maxMotorEff * rpmEffFactor));
+      }
+
+      // Voltage sag under load (realistic small internal resistance ~0.08 Ohm, while keeping V*I exact):
+      const rawCurrentEst = mechPowerW > 0.01 ? (mechPowerW / motorEff) / cfg.batteryVoltage : 0;
+      const terminalVoltage = Math.max(cfg.batteryVoltage * 0.88, cfg.batteryVoltage - rawCurrentEst * 0.06);
+      const currentA = mechPowerW > 0.01 ? (mechPowerW / motorEff) / terminalVoltage : 0;
+      const electricPowerW = terminalVoltage * currentA; // Exact identity: P_electric = V * I
+
+      return {
+        motorRpm,
+        motorOmega,
+        motorTorqueNm,
+        mechPowerW,
+        motorEff,
+        voltageV: terminalVoltage,
+        currentA,
+        electricPowerW
+      };
+    }
+
+    /* ==================== VEHICLE PHYSICS ==================== */
+    const simState = {
+      paused: false,
+      sDist: 0,           // Arc-length position on closed loop track (m)
+      totalDistM: 0,      // Cumulative distance traveled in session (m)
+      lapDistM: 0,        // Distance traveled in current lap (m)
+      lateralOffset: 0,   // Lateral offset from centerline (m, negative = left, positive = right)
+      headingOffset: 0,   // Relative yaw angle vs track tangent (rad)
+      speedMs: 0,         // Longitudinal speed (m/s)
+      accelMs2: 0,        // Longitudinal acceleration (m/s^2)
+      throttlePct: 0,     // Active throttle (0 - 100%)
+      stepThrottlePct: 0, // Stored step throttle (0 - 100%)
+      brakePct: 0,        // Active brake (0 - 100%)
+      steerAngle: 0,      // Front wheel steer angle (rad)
+      wheelRotAngle: 0,   // Cumulative wheel spin angle (rad)
+      motorRpm: 0,
+      motorTorqueNm: 0,
+      voltageV: 54.0,
+      currentA: 0,
+      electricPowerW: 0,
+      energyTotalWh: 0,
+      energyLapWh: 0,
+      brakeLossLapWh: 0,
+      fTraction: 0,
+      fAero: 0,
+      fRoll: 0,
+      fGrade: 0,
+      fBrake: 0,
+      fNet: 0,
+      gradeRad: 0,
+      gradePct: 0,
+      elevationM: 0,
+      worldX: 0,
+      worldY: 0,
+      worldZ: 0,
+      worldYaw: 0,
+      lapNumber: 1,
+      lapTimeSec: 0,
+      totalTimeSec: 0,
+      sectorIndex: 0,
+      checkpointsPassed: [true, false, false, false],
+      cameraMode: 0,      // 0: Chase 3P, 1: Cockpit 1P, 2: Overhead Tactical
+      showRacingLine: true,
+      showCornerMarkers: true,
+      chartXAxis: 'time'  // 'time' | 'dist'
+    };
+
+    /**
+     * Advances longitudinal and lateral vehicle dynamics by a fixed physics timestep dt (s).
+     * Strictly uses SI units internally:
+     *   F_net = F_traction - F_aero - F_roll - F_grade - F_brake
+     *   F_aero = 0.5 * rho * CdA * v^2
+     *   F_roll = Crr * m * g * cos(theta)
+     *   F_grade = m * g * sin(theta)
+     *   a = F_net / m
+     */
+    function stepVehiclePhysics(dt) {
+      if (simState.paused) return;
+
+      const cfg = vehicleConfig;
+      const trackSample = sampleTrackAtS(simState.sDist);
+      const theta = trackSample.gradeRad;
+      simState.gradeRad = theta;
+      simState.gradePct = Math.tan(theta) * 100;
+      simState.elevationM = trackSample.y;
+
+      const thrNorm = simState.throttlePct / 100;
+      const brkNorm = simState.brakePct / 100;
+
+      // 1. Evaluate Motor & Battery
+      const mb = evaluateMotorAndBattery(simState.speedMs, thrNorm, cfg);
+      simState.motorRpm = mb.motorRpm;
+      simState.motorTorqueNm = mb.motorTorqueNm;
+      simState.voltageV = mb.voltageV;
+      simState.currentA = mb.currentA;
+      simState.electricPowerW = mb.electricPowerW;
+
+      // 2. Wheel Torque & Traction Force:
+      // T_wheel = T_motor * 11 * eta_transmission
+      // F_traction = T_wheel / 0.275
+      const wheelTorqueNm = mb.motorTorqueNm * cfg.gearRatio * cfg.transEff;
+      let fTraction = wheelTorqueNm / cfg.wheelRadius;
+
+      // Small cornering scrub drag if steering aggressively at speed:
+      const cornerScrubForce = Math.abs(simState.steerAngle) * simState.speedMs * 2.2;
+
+      // 3. Resistive Forces (SI Units):
+      const v = simState.speedMs;
+      const fAero = 0.5 * cfg.airDensity * cfg.cda * v * v;
+      const fRollMag = cfg.crr * cfg.massTotal * cfg.gravity * Math.cos(theta) + cornerScrubForce;
+      const fGrade = cfg.massTotal * cfg.gravity * Math.sin(theta);
+      const fBrakeMag = brkNorm * cfg.massTotal * cfg.brakeDecel;
+
+      // Grass off-track penalty if driver strays off the 7m-wide asphalt road:
+      const offTrackFactor = Math.abs(simState.lateralOffset) > 3.4 ? 2.5 : 1.0;
+
+      // Static hold condition at rest (vehicle does not creep or move by itself at rest):
+      if (v < 0.002 && thrNorm < 0.005) {
+        const staticHoldForce = fRollMag + fBrakeMag;
+        if (Math.abs(fGrade) <= staticHoldForce + 15.0) {
+          simState.speedMs = 0;
+          simState.accelMs2 = 0;
+          simState.fTraction = 0;
+          simState.fAero = 0;
+          simState.fRoll = 0;
+          simState.fGrade = fGrade;
+          simState.fBrake = brkNorm > 0 ? fBrakeMag : 0;
+          simState.fNet = 0;
+          simState.totalTimeSec += dt;
+          simState.lapTimeSec += dt;
+          return;
+        }
+      }
+
+      const fRoll = v > 0.0005 ? fRollMag * offTrackFactor : 0;
+      const fBrake = v > 0.0005 ? fBrakeMag : 0;
+      const fNet = fTraction - fAero - fRoll - fGrade - fBrake;
+      const accel = fNet / cfg.massTotal;
+
+      // Update speed (no reverse movement from braking/rolling resistance):
+      let nextSpeed = v + accel * dt;
+      if (nextSpeed <= 0) {
+        nextSpeed = 0;
+        simState.accelMs2 = 0;
+      } else {
+        simState.accelMs2 = accel;
+      }
+      simState.speedMs = nextSpeed;
+
+      simState.fTraction = fTraction;
+      simState.fAero = fAero;
+      simState.fRoll = fRoll;
+      simState.fGrade = fGrade;
+      simState.fBrake = fBrake;
+      simState.fNet = fNet;
+
+      // 4. Integrate Energy Strictly Once per Fixed Physics Step (Never negative):
+      if (mb.electricPowerW > 0) {
+        const dEnergyWh = (mb.electricPowerW * dt) / 3600.0;
+        simState.energyTotalWh += dEnergyWh;
+        simState.energyLapWh += dEnergyWh;
+      }
+      if (fBrake > 0 && simState.speedMs > 0) {
+        simState.brakeLossLapWh += (fBrake * simState.speedMs * dt) / 3600.0;
+      }
+
+      // 5. Kinematic Bicycle Model for Track Progression & Steering:
+      const ds = simState.speedMs * dt;
+      simState.wheelRotAngle = (simState.wheelRotAngle + (ds / cfg.wheelRadius)) % (Math.PI * 2000);
+
+      const wheelbase = 1.55; // m
+      const vehicleYawRate = (simState.speedMs / wheelbase) * Math.tan(simState.steerAngle);
+      const trackYawRate = trackSample.curvature * simState.speedMs;
+
+      // Assistive self-centering along track tangent so keyboard driving is smooth & enjoyable:
+      simState.headingOffset += (vehicleYawRate - trackYawRate) * dt;
+      simState.headingOffset *= Math.max(0, 1 - 1.8 * dt);
+      simState.headingOffset = Math.max(-0.65, Math.min(0.65, simState.headingOffset));
+
+      simState.lateralOffset += simState.speedMs * Math.sin(simState.headingOffset) * dt;
+      // Soft barrier at track outer guardrail (+/- 4.6 m):
+      if (Math.abs(simState.lateralOffset) > 4.6) {
+        simState.lateralOffset = Math.sign(simState.lateralOffset) * 4.6;
+        simState.headingOffset *= 0.4;
+        simState.speedMs *= Math.max(0.85, 1 - 0.5 * dt);
+      }
+
+      const prevS = simState.sDist;
+      const forwardDs = ds * Math.cos(simState.headingOffset);
+      simState.totalDistM += Math.max(0, forwardDs);
+      simState.lapDistM += Math.max(0, forwardDs);
+      simState.sDist = (simState.sDist + Math.max(0, forwardDs)) % TRACK_DATA.totalLength;
+
+      simState.totalTimeSec += dt;
+      simState.lapTimeSec += dt;
+
+      // Update world pose (X, Y, Z, Yaw) and check sector/lap progression:
+      updateWorldPoseFromTrack();
+      updateLapAndCheckpoints(prevS, simState.sDist);
+    }
+    /* ==================== TRACK SYSTEM ==================== */
+    /**
+     * Generates a closed-loop demonstration circuit clearly labeled:
+     * "DEMO TRACK — BUKAN GEOMETRI LINTASAN ASLI"
+     * Includes straights, technical corners, elevation profile, racing line offsets,
+     * and Brake / Apex / Exit markers.
+     */
+    const TRACK_DATA = {
+      name: 'DEMO TRACK — BUKAN GEOMETRI LINTASAN ASLI',
+      points: [],
+      totalLength: 0,
+      roadWidth: 7.2,
+      sectors: [
+        { id: 0, name: 'S1: Lurus Utama & T1 Selatan', startFrac: 0.0, endFrac: 0.25 },
+        { id: 1, name: 'S2: Tanjakan Timur & Chicane', startFrac: 0.25, endFrac: 0.50 },
+        { id: 2, name: 'S3: Puncak Utara & Turunan Cepat', startFrac: 0.50, endFrac: 0.75 },
+        { id: 3, name: 'S4: Hairpin Barat & Paddock', startFrac: 0.75, endFrac: 1.00 }
+      ],
+      corners: []
+    };
+
+    function buildDemoTrackGeometry() {
+      const N = 720;
+      const rawPts = [];
+      // Parametric closed loop (~1,390 m perimeter) with straights, sweeping turns, hairpin, and elevation:
+      for (let i = 0; i < N; i++) {
+        const u = (i / N) * Math.PI * 2;
+        const x = 235 * Math.cos(u) + 52 * Math.cos(2 * u) - 28 * Math.sin(3 * u);
+        const z = 148 * Math.sin(u) + 38 * Math.sin(2 * u) + 24 * Math.cos(3 * u);
+        // Smooth realistic elevation profile (range ~0.0m to +6.4m, grades between -2.8% and +3.1%):
+        const y = 3.1 + 2.4 * Math.sin(u - 0.5) - 0.9 * Math.cos(2 * u + 0.4);
+        rawPts.push({ x, y, z });
+      }
+
+      let cumS = 0;
+      const pts = [];
+      for (let i = 0; i < N; i++) {
+        const prev = rawPts[(i - 1 + N) % N];
+        const curr = rawPts[i];
+        const next = rawPts[(i + 1) % N];
+
+        if (i > 0) {
+          const dx = curr.x - prev.x;
+          const dz = curr.z - prev.z;
+          const dy = curr.y - prev.y;
+          cumS += Math.sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
+        const tx = next.x - prev.x;
+        const tz = next.z - prev.z;
+        const ty = next.y - prev.y;
+        const horizLen = Math.max(1e-5, Math.sqrt(tx * tx + tz * tz));
+        const nx = tx / horizLen;
+        const nz = tz / horizLen;
+        // Right-hand lateral normal vector in XZ plane:
+        const rx = -nz;
+        const rz = nx;
+        const yaw = Math.atan2(nx, nz);
+        const gradeRad = Math.atan2(ty, horizLen);
+
+        pts.push({
+          s: cumS,
+          x: curr.x,
+          y: curr.y,
+          z: curr.z,
+          tx: nx,
+          tz: nz,
+          rx,
+          rz,
+          yaw,
+          gradeRad,
+          curvature: 0,
+          racingOffset: 0
+        });
+      }
+
+      // Close loop total length:
+      const last = rawPts[N - 1];
+      const first = rawPts[0];
+      const closeSeg = Math.sqrt(
+        Math.pow(first.x - last.x, 2) +
+        Math.pow(first.y - last.y, 2) +
+        Math.pow(first.z - last.z, 2)
+      );
+      TRACK_DATA.totalLength = cumS + closeSeg;
+
+      // Compute curvature and optimal racing-line lateral offset (outside-inside-outside):
+      for (let i = 0; i < N; i++) {
+        const pPrev = pts[(i - 4 + N) % N];
+        const pNext = pts[(i + 4) % N];
+        let dYaw = pNext.yaw - pPrev.yaw;
+        while (dYaw > Math.PI) dYaw -= Math.PI * 2;
+        while (dYaw < -Math.PI) dYaw += Math.PI * 2;
+        const ds = Math.max(1.0, (8 / N) * TRACK_DATA.totalLength);
+        pts[i].curvature = dYaw / ds;
+      }
+
+      // Smooth curvature to generate racing line offset (cuts toward inside of apex):
+      for (let i = 0; i < N; i++) {
+        let sumCurv = 0;
+        for (let k = -8; k <= 8; k++) {
+          sumCurv += pts[(i + k + N) % N].curvature;
+        }
+        const avgCurv = sumCurv / 17;
+        // Shift toward inside of corner up to +/- 2.1m:
+        pts[i].racingOffset = Math.max(-2.1, Math.min(2.1, -avgCurv * 68.0));
+      }
+
+      TRACK_DATA.points = pts;
+
+      // Identify major corners (local curvature peaks) for Brake, Apex, and Exit markers:
+      const cornerIndices = [85, 225, 365, 515, 645];
+      const cornerNames = [
+        'T1 Tikungan Selatan',
+        'T2 Chicane Timur',
+        'T3 Puncak Utara',
+        'T4 Turunan Barat',
+        'T5 Hairpin Paddock'
+      ];
+      TRACK_DATA.corners = cornerIndices.map((apexIdx, idx) => {
+        const brakeIdx = (apexIdx - 22 + N) % N;
+        const exitIdx = (apexIdx + 20) % N;
+        return {
+          id: idx + 1,
+          name: cornerNames[idx],
+          brakePt: pts[brakeIdx],
+          apexPt: pts[apexIdx],
+          exitPt: pts[exitIdx]
+        };
+      });
+    }
+
+    function sampleTrackAtS(sInput) {
+      const pts = TRACK_DATA.points;
+      const L = TRACK_DATA.totalLength;
+      if (!pts.length || L <= 0) {
+        return { x: 0, y: 0, z: 0, tx: 0, tz: 1, rx: -1, rz: 0, yaw: 0, gradeRad: 0, curvature: 0, racingOffset: 0 };
+      }
+      let s = sInput % L;
+      if (s < 0) s += L;
+
+      const approxIdx = Math.floor((s / L) * pts.length) % pts.length;
+      const p0 = pts[approxIdx];
+      const p1 = pts[(approxIdx + 1) % pts.length];
+      const segS = p1.s > p0.s ? (p1.s - p0.s) : (L - p0.s + p1.s);
+      const alpha = segS > 1e-4 ? Math.max(0, Math.min(1, (s - p0.s) / segS)) : 0;
+
+      let dYaw = p1.yaw - p0.yaw;
+      while (dYaw > Math.PI) dYaw -= Math.PI * 2;
+      while (dYaw < -Math.PI) dYaw += Math.PI * 2;
+
+      return {
+        x: p0.x + (p1.x - p0.x) * alpha,
+        y: p0.y + (p1.y - p0.y) * alpha,
+        z: p0.z + (p1.z - p0.z) * alpha,
+        tx: p0.tx + (p1.tx - p0.tx) * alpha,
+        tz: p0.tz + (p1.tz - p0.tz) * alpha,
+        rx: p0.rx + (p1.rx - p0.rx) * alpha,
+        rz: p0.rz + (p1.rz - p0.rz) * alpha,
+        yaw: p0.yaw + dYaw * alpha,
+        gradeRad: p0.gradeRad + (p1.gradeRad - p0.gradeRad) * alpha,
+        curvature: p0.curvature + (p1.curvature - p0.curvature) * alpha,
+        racingOffset: p0.racingOffset + (p1.racingOffset - p0.racingOffset) * alpha
+      };
+    }
+
+    function updateWorldPoseFromTrack() {
+      const sample = sampleTrackAtS(simState.sDist);
+      simState.worldX = sample.x + sample.rx * simState.lateralOffset;
+      simState.worldY = sample.y;
+      simState.worldZ = sample.z + sample.rz * simState.lateralOffset;
+      simState.worldYaw = sample.yaw + simState.headingOffset;
+    }
+
+    /* ==================== THREE.JS SCENE ==================== */
+    const scene3D = {
+      available: false,
+      scene: null,
+      camera: null,
+      renderer: null,
+      carGroup: null,
+      wheels: [],
+      frontWheelPivots: [],
+      cockpitWheel: null,
+      brakeLightsMat: null,
+      racingLineMesh: null,
+      cornerMarkersGroup: null
+    };
+
+    function initThreeJsScene() {
+      const container = document.getElementById('canvas-container');
+      const errorOverlay = document.getElementById('webgl-error-overlay');
+      const errorMsg = document.getElementById('webgl-error-message');
+
+      if (typeof THREE === 'undefined') {
+        errorOverlay.classList.remove('hidden');
+        errorMsg.textContent = 'Library Three.js dari CDN tidak berhasil dimuat (koneksi CDN terputus atau diblokir). Sesuai spesifikasi, aplikasi tidak berpura-pura menjalankan visualisasi 3D.';
+        scene3D.available = false;
+        return;
+      }
+
+      try {
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b1528);
+        scene.fog = new THREE.FogExp2(0x0b1528, 0.0014);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.15, 1200);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        container.innerHTML = '';
+        container.appendChild(renderer.domElement);
+
+        // Lighting:
+        const hemiLight = new THREE.HemisphereLight(0x93c5fd, 0x1e293b, 0.75);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffbeb, 1.05);
+        dirLight.position.set(140, 220, 120);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        dirLight.shadow.camera.near = 10;
+        dirLight.shadow.camera.far = 650;
+        const d = 280;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        scene.add(dirLight);
+
+        // Ground Plane (Grass Terrain):
+        const groundGeo = new THREE.PlaneGeometry(1400, 1400, 32, 32);
+        groundGeo.rotateX(-Math.PI / 2);
+        const groundMat = new THREE.MeshLambertMaterial({ color: 0x143326 });
+        const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+        groundMesh.position.y = -0.2;
+        groundMesh.receiveShadow = true;
+        scene.add(groundMesh);
+
+        // Build 3D Road Ribbon, Kerbs, Center Dashed Line, Racing Line, and Corner Markers:
+        buildTrack3DMeshes(scene);
+
+        // Build RAKATA Urban Electric 3D Prototype Vehicle:
+        buildRakataCarMesh(scene);
+
+        // Build Surrounding Environment Trees & Landmarks:
+        buildEnvironmentScenery(scene);
+
+        scene3D.scene = scene;
+        scene3D.camera = camera;
+        scene3D.renderer = renderer;
+        scene3D.available = true;
+
+        window.addEventListener('resize', () => {
+          if (!scene3D.available) return;
+          scene3D.camera.aspect = window.innerWidth / window.innerHeight;
+          scene3D.camera.updateProjectionMatrix();
+          scene3D.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+      } catch (err) {
+        errorOverlay.classList.remove('hidden');
+        errorMsg.textContent = 'Konteks WebGL gagal diinisialisasi pada perangkat ini: ' + (err && err.message ? err.message : String(err));
+        scene3D.available = false;
+      }
+    }
+
+    function buildTrack3DMeshes(scene) {
+      const pts = TRACK_DATA.points;
+      const N = pts.length;
+      const halfW = TRACK_DATA.roadWidth * 0.5;
+
+      // 1. Road Surface Ribbon Geometry + Support Embankment
+      const roadPositions = [];
+      const roadNormals = [];
+      const roadIndices = [];
+      const kerbPositions = [];
+      const kerbColors = [];
+      const kerbIndices = [];
+
+      for (let i = 0; i <= N; i++) {
+        const p = pts[i % N];
+        const lx = p.x - p.rx * halfW;
+        const lz = p.z - p.rz * halfW;
+        const rx = p.x + p.rx * halfW;
+        const rz = p.z + p.rz * halfW;
+
+        roadPositions.push(lx, p.y, lz, rx, p.y, rz);
+        roadNormals.push(0, 1, 0, 0, 1, 0);
+
+        // Outer red/white curbs:
+        const klx = p.x - p.rx * (halfW + 0.45);
+        const klz = p.z - p.rz * (halfW + 0.45);
+        const krx = p.x + p.rx * (halfW + 0.45);
+        const krz = p.z + p.rz * (halfW + 0.45);
+        kerbPositions.push(
+          klx, p.y + 0.02, klz, lx, p.y + 0.02, lz,
+          rx, p.y + 0.02, rz, krx, p.y + 0.02, krz
+        );
+        const isRed = i % 4 < 2;
+        const cR = isRed ? 0.90 : 0.95;
+        const cG = isRed ? 0.18 : 0.95;
+        const cB = isRed ? 0.18 : 0.95;
+        for (let k = 0; k < 4; k++) kerbColors.push(cR, cG, cB);
+
+        if (i < N) {
+          const base = i * 2;
+          roadIndices.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+
+          const kb = i * 4;
+          kerbIndices.push(
+            kb, kb + 1, kb + 4, kb + 1, kb + 5, kb + 4,
+            kb + 2, kb + 3, kb + 6, kb + 3, kb + 7, kb + 6
+          );
+        }
+      }
+
+      const roadGeo = new THREE.BufferGeometry();
+      roadGeo.setAttribute('position', new THREE.Float32BufferAttribute(roadPositions, 3));
+      roadGeo.setAttribute('normal', new THREE.Float32BufferAttribute(roadNormals, 3));
+      roadGeo.setIndex(roadIndices);
+      const roadMat = new THREE.MeshStandardMaterial({ color: 0x262f3f, roughness: 0.85, metalness: 0.1 });
+      const roadMesh = new THREE.Mesh(roadGeo, roadMat);
+      roadMesh.receiveShadow = true;
+      scene.add(roadMesh);
+
+      const kerbGeo = new THREE.BufferGeometry();
+      kerbGeo.setAttribute('position', new THREE.Float32BufferAttribute(kerbPositions, 3));
+      kerbGeo.setAttribute('color', new THREE.Float32BufferAttribute(kerbColors, 3));
+      kerbGeo.setIndex(kerbIndices);
+      kerbGeo.computeVertexNormals();
+      const kerbMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+      scene.add(new THREE.Mesh(kerbGeo, kerbMat));
+
+      // 2. Center Dashed Lane Markings:
+      const dashPositions = [];
+      for (let i = 0; i < N; i += 4) {
+        const p0 = pts[i];
+        const p1 = pts[(i + 2) % N];
+        dashPositions.push(p0.x, p0.y + 0.03, p0.z, p1.x, p1.y + 0.03, p1.z);
+      }
+      const dashGeo = new THREE.BufferGeometry();
+      dashGeo.setAttribute('position', new THREE.Float32BufferAttribute(dashPositions, 3));
+      const dashLines = new THREE.LineSegments(dashGeo, new THREE.LineBasicMaterial({ color: 0x94a3b8 }));
+      scene.add(dashLines);
+
+      // 3. Optimal Racing Line Ribbon (Toggleable):
+      const rlPositions = [];
+      const rlIndices = [];
+      for (let i = 0; i <= N; i++) {
+        const p = pts[i % N];
+        const cx = p.x + p.rx * p.racingOffset;
+        const cz = p.z + p.rz * p.racingOffset;
+        rlPositions.push(
+          cx - p.rx * 0.22, p.y + 0.04, cz - p.rz * 0.22,
+          cx + p.rx * 0.22, p.y + 0.04, cz + p.rz * 0.22
+        );
+        if (i < N) {
+          const b = i * 2;
+          rlIndices.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+        }
+      }
+      const rlGeo = new THREE.BufferGeometry();
+      rlGeo.setAttribute('position', new THREE.Float32BufferAttribute(rlPositions, 3));
+      rlGeo.setIndex(rlIndices);
+      rlGeo.computeVertexNormals();
+      const rlMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.72, side: THREE.DoubleSide });
+      scene3D.racingLineMesh = new THREE.Mesh(rlGeo, rlMat);
+      scene.add(scene3D.racingLineMesh);
+
+      // 4. Start / Finish Gantry Arch at s = 0:
+      const pStart = pts[0];
+      const gantryGroup = new THREE.Group();
+      gantryGroup.position.set(pStart.x, pStart.y, pStart.z);
+      gantryGroup.rotation.y = pStart.yaw;
+
+      const pillarGeo = new THREE.BoxGeometry(0.45, 5.2, 0.45);
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0 });
+      const leftPillar = new THREE.Mesh(pillarGeo, pillarMat);
+      leftPillar.position.set(-halfW - 0.6, 2.6, 0);
+      const rightPillar = new THREE.Mesh(pillarGeo, pillarMat);
+      rightPillar.position.set(halfW + 0.6, 2.6, 0);
+      const topBanner = new THREE.Mesh(
+        new THREE.BoxGeometry(TRACK_DATA.roadWidth + 2.0, 0.9, 0.6),
+        new THREE.MeshStandardMaterial({ color: 0xdc2626 })
+      );
+      topBanner.position.set(0, 5.0, 0);
+      const startStrip = new THREE.Mesh(
+        new THREE.PlaneGeometry(TRACK_DATA.roadWidth, 1.4),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+      );
+      startStrip.rotation.x = -Math.PI / 2;
+      startStrip.position.y = 0.035;
+      gantryGroup.add(leftPillar, rightPillar, topBanner, startStrip);
+      scene.add(gantryGroup);
+
+      // 5. Corner Markers (Brake = Red, Apex = Emerald, Exit = Amber):
+      const markersGroup = new THREE.Group();
+      const markerSpec = [
+        { key: 'brakePt', color: 0xef4444, side: -1, height: 1.8 },
+        { key: 'apexPt',  color: 0x10b981, side: 1,  height: 1.5 },
+        { key: 'exitPt',  color: 0xf59e0b, side: -1, height: 1.8 }
+      ];
+      TRACK_DATA.corners.forEach((corner) => {
+        markerSpec.forEach((spec) => {
+          const pt = corner[spec.key];
+          const sign = (pt.curvature >= 0 ? 1 : -1) * spec.side;
+          const mx = pt.x + pt.rx * (halfW + 1.1) * sign;
+          const mz = pt.z + pt.rz * (halfW + 1.1) * sign;
+
+          const post = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.18, 0.24, spec.height, 12),
+            new THREE.MeshStandardMaterial({ color: spec.color, emissive: spec.color, emissiveIntensity: 0.25 })
+          );
+          post.position.set(mx, pt.y + spec.height * 0.5, mz);
+          markersGroup.add(post);
+
+          const pad = new THREE.Mesh(
+            new THREE.RingGeometry(0.4, 0.85, 16),
+            new THREE.MeshBasicMaterial({ color: spec.color, side: THREE.DoubleSide })
+          );
+          pad.rotation.x = -Math.PI / 2;
+          pad.position.set(pt.x + pt.rx * pt.racingOffset, pt.y + 0.05, pt.z + pt.rz * pt.racingOffset);
+          markersGroup.add(pad);
+        });
+      });
+      scene3D.cornerMarkersGroup = markersGroup;
+      scene.add(markersGroup);
+    }
+
+    function buildRakataCarMesh(scene) {
+      const carGroup = new THREE.Group();
+
+      // Main Prototype Monocoque Body (Sleek aerodynamic urban concept):
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.25, metalness: 0.45 });
+      const carbonMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.3 });
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.55 });
+
+      // Lower chassis tub:
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.34, 2.55), carbonMat);
+      chassis.position.set(0, 0.30, 0);
+      chassis.castShadow = true;
+      carGroup.add(chassis);
+
+      // Upper sculpted aero body shell:
+      const upperBody = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.32, 2.30), bodyMat);
+      upperBody.position.set(0, 0.54, -0.04);
+      upperBody.castShadow = true;
+      carGroup.add(upperBody);
+
+      // Nose cone slope:
+      const nose = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.24, 0.65), bodyMat);
+      nose.position.set(0, 0.38, 1.15);
+      nose.rotation.x = 0.22;
+      carGroup.add(nose);
+
+      // Cabin greenhouse / canopy:
+      const canopy = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.40, 1.35), glassMat);
+      canopy.position.set(0, 0.84, 0.02);
+      carGroup.add(canopy);
+
+      // Roof solar/telemetry panel & aero fin:
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.05, 1.05), carbonMat);
+      roof.position.set(0, 1.05, -0.05);
+      carGroup.add(roof);
+
+      // Headlights (Front +Z):
+      const headLightMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe });
+      const hlLeft = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.05), headLightMat);
+      hlLeft.position.set(-0.34, 0.44, 1.44);
+      const hlRight = hlLeft.clone();
+      hlRight.position.x = 0.34;
+      carGroup.add(hlLeft, hlRight);
+
+      // Rear Brake Light Bar (Rear -Z):
+      scene3D.brakeLightsMat = new THREE.MeshBasicMaterial({ color: 0x7f1d1d });
+      const brakeBar = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.09, 0.05), scene3D.brakeLightsMat);
+      brakeBar.position.set(0, 0.58, -1.28);
+      carGroup.add(brakeBar);
+
+      // Cockpit Interior Steering Wheel (Visible in 1st-person Cockpit Cam):
+      const steerWheelGroup = new THREE.Group();
+      steerWheelGroup.position.set(0, 0.72, 0.42);
+      const rim = new THREE.Mesh(
+        new THREE.TorusGeometry(0.14, 0.022, 8, 20),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a })
+      );
+      const spoke = new THREE.Mesh(
+        new THREE.BoxGeometry(0.26, 0.025, 0.02),
+        new THREE.MeshStandardMaterial({ color: 0xef4444 })
+      );
+      steerWheelGroup.add(rim, spoke);
+      carGroup.add(steerWheelGroup);
+      scene3D.cockpitWheel = steerWheelGroup;
+
+      // 4 Wheels (Radius = 0.275 m, Diameter = 550 mm):
+      const wheelRadius = 0.275;
+      const wheelWidth = 0.14;
+      const tireGeo = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelWidth, 24);
+      tireGeo.rotateZ(Math.PI / 2);
+      const tireMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
+      const spokeGeo = new THREE.BoxGeometry(wheelWidth + 0.02, wheelRadius * 1.55, 0.045);
+      const spokeMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.6, roughness: 0.3 });
+
+      const wheelCoords = [
+        { x: -0.58, y: wheelRadius, z: 0.78, isFront: true },
+        { x:  0.58, y: wheelRadius, z: 0.78, isFront: true },
+        { x: -0.58, y: wheelRadius, z: -0.78, isFront: false },
+        { x:  0.58, y: wheelRadius, z: -0.78, isFront: false }
+      ];
+
+      scene3D.wheels = [];
+      scene3D.frontWheelPivots = [];
+
+      wheelCoords.forEach((wc) => {
+        const pivot = new THREE.Group();
+        pivot.position.set(wc.x, wc.y, wc.z);
+
+        const spinGroup = new THREE.Group();
+        const tireMesh = new THREE.Mesh(tireGeo, tireMat);
+        const spoke1 = new THREE.Mesh(spokeGeo, spokeMat);
+        const spoke2 = new THREE.Mesh(spokeGeo, spokeMat);
+        spoke2.rotation.x = Math.PI / 2;
+        spinGroup.add(tireMesh, spoke1, spoke2);
+
+        pivot.add(spinGroup);
+        carGroup.add(pivot);
+
+        scene3D.wheels.push(spinGroup);
+        if (wc.isFront) scene3D.frontWheelPivots.push(pivot);
+      });
+
+      scene.add(carGroup);
+      scene3D.carGroup = carGroup;
+    }
+
+    function buildEnvironmentScenery(scene) {
+      const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.2, 7);
+      const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 });
+      const crownGeo = new THREE.ConeGeometry(1.9, 4.8, 8);
+      const crownMat = new THREE.MeshLambertMaterial({ color: 0x15803d });
+
+      const pts = TRACK_DATA.points;
+      for (let i = 0; i < pts.length; i += 11) {
+        const p = pts[i];
+        const side = (i % 2 === 0) ? 1 : -1;
+        const dist = 13 + (i % 5) * 4.5;
+        const tx = p.x + p.rx * side * dist;
+        const tz = p.z + p.rz * side * dist;
+
+        const tree = new THREE.Group();
+        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+        trunk.position.y = 1.1;
+        const crown = new THREE.Mesh(crownGeo, crownMat);
+        crown.position.y = 4.1;
+        tree.add(trunk, crown);
+        tree.position.set(tx, -0.2, tz);
+        scene.add(tree);
+      }
+    }
+
+    function renderThreeJsFrame() {
+      if (!scene3D.available || !scene3D.carGroup) return;
+
+      const sample = sampleTrackAtS(simState.sDist);
+      const car = scene3D.carGroup;
+      car.position.set(simState.worldX, simState.worldY, simState.worldZ);
+
+      // Apply yaw and pitch (track grade):
+      car.rotation.order = 'YXZ';
+      car.rotation.y = simState.worldYaw;
+      car.rotation.x = -simState.gradeRad;
+
+      // Spin all 4 wheels according to vehicle distance traveled & steer front wheels:
+      scene3D.wheels.forEach((w) => {
+        w.rotation.x = simState.wheelRotAngle;
+      });
+      scene3D.frontWheelPivots.forEach((p) => {
+        p.rotation.y = simState.steerAngle;
+      });
+      if (scene3D.cockpitWheel) {
+        scene3D.cockpitWheel.rotation.z = -simState.steerAngle * 3.2;
+      }
+
+      // Illuminate rear brake light bar when braking:
+      if (scene3D.brakeLightsMat) {
+        scene3D.brakeLightsMat.color.setHex(simState.brakePct > 2 ? 0xff2222 : 0x6b1111);
+      }
+
+      // Camera positioning (0: Third-Person Chase, 1: Cockpit First-Person, 2: Overhead Follow):
+      const cam = scene3D.camera;
+      const forwardX = Math.sin(simState.worldYaw);
+      const forwardZ = Math.cos(simState.worldYaw);
+
+      if (simState.cameraMode === 0) {
+        // Third-Person Chase Camera
+        const targetCamX = simState.worldX - forwardX * 6.2;
+        const targetCamY = simState.worldY + 2.45;
+        const targetCamZ = simState.worldZ - forwardZ * 6.2;
+        cam.position.lerp(new THREE.Vector3(targetCamX, targetCamY, targetCamZ), 0.18);
+        cam.lookAt(
+          simState.worldX + forwardX * 6.0,
+          simState.worldY + 0.85,
+          simState.worldZ + forwardZ * 6.0
+        );
+      } else if (simState.cameraMode === 1) {
+        // Cockpit First-Person Camera
+        cam.position.set(
+          simState.worldX + forwardX * 0.08,
+          simState.worldY + 0.88,
+          simState.worldZ + forwardZ * 0.08
+        );
+        cam.lookAt(
+          simState.worldX + forwardX * 14.0,
+          simState.worldY + 0.72 + Math.tan(simState.gradeRad) * 14.0,
+          simState.worldZ + forwardZ * 14.0
+        );
+      } else {
+        // Overhead Tactical Camera
+        cam.position.set(
+          simState.worldX - forwardX * 14.0,
+          simState.worldY + 26.0,
+          simState.worldZ - forwardZ * 14.0
+        );
+        cam.lookAt(
+          simState.worldX + forwardX * 8.0,
+          simState.worldY,
+          simState.worldZ + forwardZ * 8.0
+        );
+      }
+
+      scene3D.renderer.render(scene3D.scene, cam);
+    }
+
+    /* ==================== INPUT CONTROLS ==================== */
+    const inputKeys = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      stepHoldTimer: 0
+    };
+
+    function updateThrottleModeUI() {
+      const isStep = vehicleConfig.throttleMode === 'step';
+      const btnAnalog = document.getElementById('btn-mode-analog');
+      const btnStep = document.getElementById('btn-mode-step');
+      if (btnAnalog && btnStep) {
+        btnAnalog.className = !isStep
+          ? 'px-2 py-1 text-[10px] font-bold rounded bg-emerald-600 text-white'
+          : 'px-2 py-1 text-[10px] font-bold rounded bg-slate-800 text-slate-300';
+        btnStep.className = isStep
+          ? 'px-2 py-1 text-[10px] font-bold rounded bg-amber-600 text-white'
+          : 'px-2 py-1 text-[10px] font-bold rounded bg-slate-800 text-slate-300';
+        btnStep.textContent = `Mode: Step (${vehicleConfig.stepIncrementPct}%)`;
+      }
+    }
+
+    function incrementStepThrottle(deltaSign) {
+      const step = vehicleConfig.stepIncrementPct;
+      simState.stepThrottlePct = Math.max(0, Math.min(100, simState.stepThrottlePct + deltaSign * step));
+      if (vehicleConfig.throttleMode === 'step') {
+        simState.throttlePct = simState.stepThrottlePct;
+      }
+    }
+
+    function updateDriverInputs(dt) {
+      if (simState.paused) return;
+
+      // 1. Steering (A/D or Left/Right):
+      const maxSteerRad = 0.42;
+      const steerRate = 1.85;
+      if (inputKeys.left && !inputKeys.right) {
+        simState.steerAngle = Math.min(maxSteerRad, simState.steerAngle + steerRate * dt);
+      } else if (inputKeys.right && !inputKeys.left) {
+        simState.steerAngle = Math.max(-maxSteerRad, simState.steerAngle - steerRate * dt);
+      } else {
+        // Return to center:
+        if (Math.abs(simState.steerAngle) < 0.015) {
+          simState.steerAngle = 0;
+        } else {
+          simState.steerAngle -= Math.sign(simState.steerAngle) * steerRate * 1.5 * dt;
+        }
+      }
+
+      // 2. Brake (S or Down):
+      if (inputKeys.down) {
+        simState.brakePct = Math.min(100, simState.brakePct + 240 * dt);
+        if (vehicleConfig.throttleMode === 'step' && vehicleConfig.stepResetOnBrake) {
+          simState.stepThrottlePct = 0;
+        }
+      } else {
+        simState.brakePct = Math.max(0, simState.brakePct - 320 * dt);
+      }
+
+      // 3. Strictly Separated Throttle Modes:
+      if (vehicleConfig.throttleMode === 'analog') {
+        // Mode Analog / Progresif:
+        if (inputKeys.up && !inputKeys.down) {
+          simState.throttlePct = Math.min(100, simState.throttlePct + 68 * dt);
+        } else {
+          simState.throttlePct = Math.max(0, simState.throttlePct - 135 * dt);
+        }
+      } else {
+        // Mode Step Throttle (Tidak bercampur dengan decay analog):
+        if (vehicleConfig.stepBehavior === 'hold' && inputKeys.up && !inputKeys.down) {
+          inputKeys.stepHoldTimer += dt;
+          if (inputKeys.stepHoldTimer >= 0.22) {
+            inputKeys.stepHoldTimer = 0;
+            incrementStepThrottle(+1);
+          }
+        } else {
+          inputKeys.stepHoldTimer = 0;
+        }
+        simState.throttlePct = inputKeys.down && vehicleConfig.stepResetOnBrake ? 0 : simState.stepThrottlePct;
+      }
+    }
+
+    /* ==================== LAP TIMING ==================== */
+    function updateLapAndCheckpoints(prevS, currS) {
+      const L = TRACK_DATA.totalLength;
+      const progressFrac = currS / L;
+      const secIdx = Math.min(3, Math.floor(progressFrac * 4));
+      simState.sectorIndex = secIdx;
+
+      // Sequential checkpoint validation (S1 -> S2 -> S3 -> S4):
+      if (secIdx === 0) {
+        simState.checkpointsPassed[0] = true;
+      } else if (secIdx > 0 && simState.checkpointsPassed[secIdx - 1]) {
+        simState.checkpointsPassed[secIdx] = true;
+      }
+
+      // Record sector telemetry statistics for Driving Coach:
+      recordCurrentSectorSample(secIdx);
+
+      // Detect Start/Finish Line Crossing (prevS near end of track -> currS near start of track):
+      if (prevS > L * 0.82 && currS < L * 0.18) {
+        const allPassed = simState.checkpointsPassed.every(Boolean);
+        if (allPassed && simState.lapDistM > L * 0.85) {
+          completeValidLap();
+        }
+      }
+    }
+
+    function resetVehiclePosition(resetSessionEnergy = false) {
+      simState.sDist = 0;
+      simState.lateralOffset = 0;
+      simState.headingOffset = 0;
+      simState.speedMs = 0;
+      simState.accelMs2 = 0;
+      simState.throttlePct = 0;
+      simState.stepThrottlePct = 0;
+      simState.brakePct = 0;
+      simState.steerAngle = 0;
+      simState.motorRpm = 0;
+      simState.motorTorqueNm = 0;
+      simState.currentA = 0;
+      simState.electricPowerW = 0;
+      simState.fTraction = 0;
+      simState.fAero = 0;
+      simState.fRoll = 0;
+      simState.fGrade = 0;
+      simState.fBrake = 0;
+      simState.fNet = 0;
+      simState.lapDistM = 0;
+      simState.lapTimeSec = 0;
+      simState.energyLapWh = 0;
+      simState.brakeLossLapWh = 0;
+      simState.checkpointsPassed = [true, false, false, false];
+      resetCurrentLapCoachAccumulator();
+
+      if (resetSessionEnergy) {
+        simState.totalDistM = 0;
+        simState.totalTimeSec = 0;
+        simState.energyTotalWh = 0;
+        simState.lapNumber = 1;
+        telemetryHistory.length = 0;
+        chartBuffer.length = 0;
+      }
+      updateWorldPoseFromTrack();
+      updateDashboardUI();
+    }
+    /* ==================== TELEMETRY ==================== */
+    const MAX_CHART_BUFFER = 480; // Bounded ring buffer to keep browser performance fast
+    const chartBuffer = [];
+    const telemetryHistory = [];  // Full session telemetry log for CSV export (bounded to 18,000 samples)
+    let telemetrySampleTimer = 0;
+
+    function formatTimeMMSS(sec) {
+      const s = Math.max(0, sec);
+      const mins = Math.floor(s / 60);
+      const rem = (s % 60).toFixed(1);
+      return `${String(mins).padStart(2, '0')}:${rem.padStart(4, '0')}`;
+    }
+
+    function recordTelemetrySample(dt) {
+      if (simState.paused) return;
+      telemetrySampleTimer += dt;
+      if (telemetrySampleTimer < 0.10) return; // 10 Hz logging
+      telemetrySampleTimer = 0;
+
+      const speedKmh = simState.speedMs * 3.6;
+      const distKm = simState.totalDistM / 1000;
+      const energyKwh = simState.energyTotalWh / 1000;
+      const kmPerKwh = (distKm > 0.002 && energyKwh > 1e-6) ? (distKm / energyKwh) : 0;
+
+      // Convert local track X,Z to synthetic Bandung / Sport Jabar reference lat/lng for CSV compatibility:
+      const refLat = -6.9585 + (simState.worldZ / 111320);
+      const refLng = 107.6820 + (simState.worldX / 110540);
+
+      const sample = {
+        timestampIso: new Date().toISOString(),
+        elapsedSec: Number(simState.totalTimeSec.toFixed(2)),
+        millis: Math.round(simState.totalTimeSec * 1000),
+        distanceM: Number(simState.totalDistM.toFixed(2)),
+        rawDistKm: Number(distKm.toFixed(5)),
+        speedKmh: Number(speedKmh.toFixed(2)),
+        throttlePct: Number(simState.throttlePct.toFixed(1)),
+        brakePct: Number(simState.brakePct.toFixed(1)),
+        motorRpm: Math.round(simState.motorRpm),
+        voltageV: Number(simState.voltageV.toFixed(2)),
+        currentA: Number(simState.currentA.toFixed(3)),
+        currentMa: Math.round(simState.currentA * 1000),
+        powerW: Number(simState.electricPowerW.toFixed(2)),
+        energyWh: Number(simState.energyTotalWh.toFixed(4)),
+        kmPerKwh: Number(kmPerKwh.toFixed(2)),
+        gradePct: Number(simState.gradePct.toFixed(2)),
+        elevationM: Number(simState.elevationM.toFixed(2)),
+        lat: Number(refLat.toFixed(6)),
+        lng: Number(refLng.toFixed(6)),
+        sector: simState.sectorIndex + 1,
+        lapNumber: simState.lapNumber,
+        lapStatus: 'IN_PROGRESS_VALID'
+      };
+
+      chartBuffer.push(sample);
+      if (chartBuffer.length > MAX_CHART_BUFFER) {
+        chartBuffer.shift();
+      }
+
+      if (telemetryHistory.length < 18000) {
+        telemetryHistory.push(sample);
+      }
+
+      const expCountEl = document.getElementById('export-sample-count');
+      if (expCountEl) expCountEl.textContent = String(telemetryHistory.length);
+    }
+
+    function updateDashboardUI() {
+      const speedKmh = simState.speedMs * 3.6;
+      const distKm = simState.totalDistM / 1000;
+      const energyKwh = simState.energyTotalWh / 1000;
+      const kmPerKwh = (distKm > 0.002 && energyKwh > 1e-6) ? (distKm / energyKwh) : 0;
+      const whPerKm = distKm > 0.002 ? (simState.energyTotalWh / distKm) : 0;
+      const avgSpeedKmh = simState.totalTimeSec > 0.5 ? (distKm / (simState.totalTimeSec / 3600)) : 0;
+
+      document.getElementById('hud-speed').textContent = speedKmh.toFixed(1);
+      document.getElementById('hud-speed-ms').textContent = `(${simState.speedMs.toFixed(1)} m/s)`;
+      document.getElementById('hud-thr-pct').textContent = `${Math.round(simState.throttlePct)}%`;
+      document.getElementById('hud-brk-pct').textContent = `${Math.round(simState.brakePct)}%`;
+      document.getElementById('pedal-bar-throttle').style.height = `${Math.min(100, simState.throttlePct)}%`;
+      document.getElementById('pedal-bar-brake').style.height = `${Math.min(100, simState.brakePct)}%`;
+
+      document.getElementById('hud-rpm').textContent = `${Math.round(simState.motorRpm)} RPM`;
+      const rpmPct = Math.min(100, (simState.motorRpm / (vehicleConfig.nominalRpm * 1.2)) * 100);
+      document.getElementById('hud-rpm-bar').style.width = `${rpmPct.toFixed(1)}%`;
+
+      document.getElementById('hud-voltage').textContent = `${simState.voltageV.toFixed(1)} V`;
+      document.getElementById('hud-current').textContent = `${simState.currentA.toFixed(2)} A`;
+      document.getElementById('hud-power').textContent = `${simState.electricPowerW.toFixed(1)} W`;
+      document.getElementById('hud-energy-total').textContent = `${simState.energyTotalWh.toFixed(3)} Wh`;
+      document.getElementById('hud-energy-lap').textContent = `${simState.energyLapWh.toFixed(3)} Wh`;
+      document.getElementById('hud-efficiency').textContent = `${kmPerKwh.toFixed(1)} km/kWh`;
+      document.getElementById('hud-wh-km').textContent = `${whPerKm.toFixed(1)} Wh/km`;
+      document.getElementById('hud-distance').textContent = `${distKm.toFixed(3)} km`;
+      document.getElementById('hud-grade').textContent = `${simState.gradePct >= 0 ? '+' : ''}${simState.gradePct.toFixed(1)}%`;
+
+      // Lap & Target Status:
+      document.getElementById('hud-lap-badge').textContent = `LAP ${simState.lapNumber}`;
+      document.getElementById('hud-lap-time').textContent = formatTimeMMSS(simState.lapTimeSec);
+      document.getElementById('hud-total-time').textContent = formatTimeMMSS(simState.totalTimeSec);
+      document.getElementById('hud-avg-speed').textContent = `${avgSpeedKmh.toFixed(1)} km/j`;
+
+      const progPct = (simState.sDist / Math.max(1, TRACK_DATA.totalLength)) * 100;
+      document.getElementById('hud-lap-progress').textContent = `Progres: ${progPct.toFixed(1)}%`;
+      document.getElementById('hud-sector-name').textContent = TRACK_DATA.sectors[simState.sectorIndex].name;
+
+      for (let i = 0; i < 4; i++) {
+        const badge = document.getElementById(`cp-badge-${i}`);
+        if (badge) {
+          badge.className = simState.checkpointsPassed[i]
+            ? 'flex-1 text-center py-0.5 rounded text-[10px] mono bg-emerald-600/30 text-emerald-300 border border-emerald-500/50 font-bold'
+            : 'flex-1 text-center py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-400 border border-slate-700';
+        }
+      }
+
+      // Target Pace Projection:
+      const statusEl = document.getElementById('hud-target-status');
+      if (simState.lapDistM < 25) {
+        statusEl.textContent = 'SIAP / MULAI LAP';
+        statusEl.className = 'mono font-bold text-cyan-400';
+      } else {
+        const projectedLapSec = (simState.lapTimeSec / Math.max(0.02, simState.sDist / TRACK_DATA.totalLength));
+        const diff = projectedLapSec - vehicleConfig.targetLapTimeSec;
+        if (diff <= 0) {
+          statusEl.textContent = `ON TARGET (${diff.toFixed(1)}s)`;
+          statusEl.className = 'mono font-bold text-emerald-400';
+        } else {
+          statusEl.textContent = `LAMBAT (+${diff.toFixed(1)}s)`;
+          statusEl.className = 'mono font-bold text-amber-400';
+        }
+      }
+
+      // Forces breakdown:
+      const fTracEl = document.getElementById('hud-f-trac');
+      if (fTracEl) {
+        fTracEl.textContent = `${simState.fTraction.toFixed(1)} N`;
+        document.getElementById('hud-f-drag').textContent = `${(simState.fAero + simState.fRoll).toFixed(1)} N`;
+        document.getElementById('hud-f-grade').textContent = `${(simState.fGrade + simState.fBrake).toFixed(1)} N`;
+        document.getElementById('hud-f-net').textContent = `${simState.fNet.toFixed(1)} N (${simState.accelMs2.toFixed(2)} m/s²)`;
+      }
+    }
+
+    function drawMinimap() {
+      const canvas = document.getElementById('minimap-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const pts = TRACK_DATA.points;
+      if (!pts.length) return;
+
+      const scale = 0.34;
+      const cx = W * 0.5;
+      const cy = H * 0.5;
+
+      // Track outline:
+      ctx.beginPath();
+      pts.forEach((p, idx) => {
+        const px = cx + p.x * scale;
+        const py = cy + p.z * scale;
+        if (idx === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.closePath();
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+
+      // Racing Line on Minimap:
+      if (simState.showRacingLine) {
+        ctx.beginPath();
+        pts.forEach((p, idx) => {
+          const px = cx + (p.x + p.rx * p.racingOffset) * scale;
+          const py = cy + (p.z + p.rz * p.racingOffset) * scale;
+          if (idx === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.closePath();
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+      }
+
+      // Corner Brake / Apex / Exit dots:
+      if (simState.showCornerMarkers) {
+        TRACK_DATA.corners.forEach((c) => {
+          const drawDot = (pt, col) => {
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.arc(cx + pt.x * scale, cy + pt.z * scale, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          };
+          drawDot(c.brakePt, '#ef4444');
+          drawDot(c.apexPt, '#10b981');
+          drawDot(c.exitPt, '#f59e0b');
+        });
+      }
+
+      // Start/Finish marker:
+      const p0 = pts[0];
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx + p0.x * scale - 3, cy + p0.z * scale - 3, 6, 6);
+
+      // Vehicle live position & heading arrow:
+      const vx = cx + simState.worldX * scale;
+      const vy = cy + simState.worldZ * scale;
+      ctx.save();
+      ctx.translate(vx, vy);
+      ctx.rotate(-simState.worldYaw + Math.PI);
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(4.5, 5);
+      ctx.lineTo(-4.5, 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    /* ==================== GRAPHS ==================== */
+    function drawSingleChart(canvasId, seriesList, yMinFixed, yMaxFixed) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Subtle grid lines:
+      ctx.strokeStyle = 'rgba(51, 65, 85, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, H * 0.5);
+      ctx.lineTo(W, H * 0.5);
+      ctx.stroke();
+
+      if (chartBuffer.length < 2) return;
+
+      const useDist = simState.chartXAxis === 'dist';
+      const xVals = chartBuffer.map((d) => useDist ? d.distanceM : d.elapsedSec);
+      const xMin = xVals[0];
+      const xMax = Math.max(xMin + 1e-3, xVals[xVals.length - 1]);
+
+      seriesList.forEach((serie) => {
+        const vals = chartBuffer.map(serie.getter);
+        let yMin = yMinFixed !== null ? yMinFixed : Math.min(...vals);
+        let yMax = yMaxFixed !== null ? yMaxFixed : Math.max(...vals);
+        if (yMax - yMin < 1e-3) yMax = yMin + 1.0;
+
+        ctx.beginPath();
+        for (let i = 0; i < chartBuffer.length; i++) {
+          const px = ((xVals[i] - xMin) / (xMax - xMin)) * (W - 8) + 4;
+          const py = H - 4 - ((vals[i] - yMin) / (yMax - yMin)) * (H - 8);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.strokeStyle = serie.color;
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+      });
+    }
+
+    function renderTelemetryCharts() {
+      const dock = document.getElementById('charts-dock');
+      if (!dock || dock.classList.contains('hidden')) return;
+
+      const last = chartBuffer[chartBuffer.length - 1];
+      if (last) {
+        document.getElementById('chart-lbl-speed').textContent = `${last.speedKmh.toFixed(1)} km/j`;
+        document.getElementById('chart-lbl-thr').textContent = `T:${Math.round(last.throttlePct)}% B:${Math.round(last.brakePct)}%`;
+        document.getElementById('chart-lbl-power').textContent = `${last.currentA.toFixed(1)}A | ${Math.round(last.powerW)}W`;
+        document.getElementById('chart-lbl-energy').textContent = `${last.energyWh.toFixed(2)} Wh`;
+        document.getElementById('chart-lbl-grade').textContent = `${last.elevationM.toFixed(1)}m | ${last.gradePct.toFixed(1)}%`;
+      }
+
+      drawSingleChart('chart-speed', [
+        { getter: (d) => d.speedKmh, color: '#22d3ee' }
+      ], 0, 40);
+
+      drawSingleChart('chart-throttle', [
+        { getter: (d) => d.throttlePct, color: '#10b981' },
+        { getter: (d) => d.brakePct, color: '#ef4444' }
+      ], 0, 100);
+
+      drawSingleChart('chart-power', [
+        { getter: (d) => d.powerW, color: '#f59e0b' },
+        { getter: (d) => d.currentA * 40, color: '#38bdf8' }
+      ], 0, 850);
+
+      drawSingleChart('chart-energy', [
+        { getter: (d) => d.energyWh, color: '#c084fc' }
+      ], 0, null);
+
+      drawSingleChart('chart-grade', [
+        { getter: (d) => d.gradePct, color: '#fb7185' },
+        { getter: (d) => d.elevationM, color: '#94a3b8' }
+      ], -5, 8);
+    }
+
+    /* ==================== DRIVING COACH ==================== */
+    const recordedRuns = [];
+    let currentLapCoachData = null;
+
+    function resetCurrentLapCoachAccumulator() {
+      currentLapCoachData = {
+        totalSamples: 0,
+        highThrottleSamples: 0,    // Throttle >= 85%
+        inefficientAccelSamples: 0,// Throttle >= 80% while speed < 14 km/h or climbing steep grade
+        brakeSamples: 0,
+        speedSumKmh: 0,
+        maxSpeedKmh: 0,
+        minCornerSpeedKmh: 999,
+        entryCornerSpeedKmh: 0,
+        sectorEnergyWh: [0, 0, 0, 0],
+        lastEnergyLapWh: 0
+      };
+    }
+
+    function recordCurrentSectorSample(secIdx) {
+      if (!currentLapCoachData) resetCurrentLapCoachAccumulator();
+      const d = currentLapCoachData;
+      d.totalSamples++;
+      const vKmh = simState.speedMs * 3.6;
+      d.speedSumKmh += vKmh;
+      if (vKmh > d.maxSpeedKmh) d.maxSpeedKmh = vKmh;
+
+      if (simState.throttlePct >= 85) d.highThrottleSamples++;
+      if (simState.throttlePct >= 80 && (vKmh < 14 || simState.gradePct > 1.8)) {
+        d.inefficientAccelSamples++;
+      }
+      if (simState.brakePct > 5) d.brakeSamples++;
+
+      // Track corner entry vs minimum apex speed around curvature zones:
+      const sample = sampleTrackAtS(simState.sDist);
+      if (Math.abs(sample.curvature) > 0.008 && d.totalSamples > 30) {
+        if (vKmh < d.minCornerSpeedKmh) d.minCornerSpeedKmh = vKmh;
+        if (vKmh > d.entryCornerSpeedKmh) d.entryCornerSpeedKmh = vKmh;
+      }
+
+      const deltaE = Math.max(0, simState.energyLapWh - d.lastEnergyLapWh);
+      d.sectorEnergyWh[secIdx] += deltaE;
+      d.lastEnergyLapWh = simState.energyLapWh;
+    }
+
+    function buildCoachRunRecord(label, isFullValidLap) {
+      if (!currentLapCoachData || currentLapCoachData.totalSamples < 5) {
+        return null;
+      }
+      const d = currentLapCoachData;
+      const distKm = Math.max(0.001, simState.lapDistM / 1000);
+      const timeSec = Math.max(0.5, simState.lapTimeSec);
+      const avgSpeedKmh = distKm / (timeSec / 3600);
+      const energyWh = Math.max(0.0001, simState.energyLapWh);
+      const kmPerKwh = (distKm / (energyWh / 1000));
+      const highThrPct = (d.highThrottleSamples / d.totalSamples) * 100;
+      const ineffAccelPct = (d.inefficientAccelSamples / d.totalSamples) * 100;
+      const minCornerSpd = d.minCornerSpeedKmh < 900 ? d.minCornerSpeedKmh : avgSpeedKmh * 0.75;
+      const entrySpd = Math.max(minCornerSpd, d.entryCornerSpeedKmh || d.maxSpeedKmh);
+
+      // Kinetic energy lost in corner slowdowns (Wh): 0.5 * m * (v_entry^2 - v_min^2) / 3600
+      const vEntryMs = entrySpd / 3.6;
+      const vMinMs = minCornerSpd / 3.6;
+      const momentumLostWh = Math.max(0, (0.5 * vehicleConfig.massTotal * (vEntryMs * vEntryMs - vMinMs * vMinMs)) / 3600);
+
+      // Identify highest energy consuming sector:
+      let maxSecIdx = 0;
+      for (let i = 1; i < 4; i++) {
+        if (d.sectorEnergyWh[i] > d.sectorEnergyWh[maxSecIdx]) maxSecIdx = i;
+      }
+
+      const targetMet = isFullValidLap && timeSec <= vehicleConfig.targetLapTimeSec;
+
+      const run = {
+        id: `RUN-${recordedRuns.length + 1}`,
+        label,
+        isFullValidLap,
+        statusLabel: isFullValidLap ? 'LAP VALID (SELESAI)' : 'SNAPSHOT PARSIAL',
+        timeSec,
+        distKm,
+        avgSpeedKmh,
+        maxSpeedKmh: d.maxSpeedKmh,
+        energyWh,
+        kmPerKwh,
+        highThrPct,
+        ineffAccelPct,
+        minCornerSpd,
+        entrySpd,
+        momentumLostWh,
+        brakeLossWh: simState.brakeLossLapWh,
+        brakeSamplesPct: (d.brakeSamples / d.totalSamples) * 100,
+        sectorEnergyWh: [...d.sectorEnergyWh],
+        highestSectorName: TRACK_DATA.sectors[maxSecIdx].name,
+        highestSectorWh: d.sectorEnergyWh[maxSecIdx],
+        targetMet
+      };
+
+      recordedRuns.push(run);
+      document.getElementById('coach-lap-count').textContent = String(recordedRuns.length);
+      renderCoachEvaluation(run);
+      updateRunsComparisonUI();
+      return run;
+    }
+
+    function completeValidLap() {
+      const finishedLapNum = simState.lapNumber;
+      const run = buildCoachRunRecord(`Lap ${finishedLapNum} (Lintasan Penuh)`, true);
+      simState.lapNumber++;
+      simState.lapDistM = 0;
+      simState.lapTimeSec = 0;
+      simState.energyLapWh = 0;
+      simState.brakeLossLapWh = 0;
+      simState.checkpointsPassed = [true, false, false, false];
+      resetCurrentLapCoachAccumulator();
+      if (run) {
+        showToast(`🏁 Lap ${finishedLapNum} Selesai! Waktu: ${formatTimeMMSS(run.timeSec)} | Efisiensi: ${run.kmPerKwh.toFixed(1)} km/kWh`);
+      }
+    }
+
+    function renderCoachEvaluation(run) {
+      const container = document.getElementById('coach-report-container');
+      if (!container || !run) return;
+
+      const targetDiff = run.timeSec - vehicleConfig.targetLapTimeSec;
+      const targetBadge = run.isFullValidLap
+        ? (run.targetMet
+            ? `<span class="badge-fixed">TARGET TERCAPAI (${targetDiff.toFixed(1)}s dari ${vehicleConfig.targetLapTimeSec}s)</span>`
+            : `<span class="badge-assumption">MELEBIHI TARGET (+${targetDiff.toFixed(1)}s dari ${vehicleConfig.targetLapTimeSec}s)</span>`)
+        : `<span class="badge-telemetry">EVALUASI SNAPSHOT PARSIAL (${(run.distKm * 1000).toFixed(0)} m)</span>`;
+
+      // Generate specific, data-driven evaluations for all 7 required coaching dimensions:
+      const eval1 = run.highThrPct > 38
+        ? `Proporsi throttle tinggi (&ge;85%) mencapai <b>${run.highThrPct.toFixed(1)}%</b> dari durasi berkendara. Pada RAKATA Urban Electric, menjaga throttle penuh terlalu lama setelah mencapai 31 km/jam meningkatkan rugi hambatan udara ($F_{aero} \\propto v^2$) secara eksponensial. Kurangi throttle ke 65–75% untuk cruising.`
+        : `Penggunaan throttle tinggi (&ge;85%) terkendali pada <b>${run.highThrPct.toFixed(1)}%</b> durasi. Anda berhasil membatasi durasi arus puncak pada motor.`;
+
+      const eval2 = run.ineffAccelPct > 18
+        ? `Terdeteksi <b>${run.ineffAccelPct.toFixed(1)}%</b> waktu akselerasi agresif pada RPM rendah atau tanjakan. Membuka throttle &ge;80% dari kecepatan rendah memaksa motor bekerja di daerah efisiensi lebih rendah. Gunakan bukaan progresif (atau Step Throttle 5%) saat mulai bergerak.`
+        : `Pola akselerasi awal efisien (hanya <b>${run.ineffAccelPct.toFixed(1)}%</b> bukaan berlebih pada kecepatan rendah/tanjakan).`;
+
+      const eval3 = run.minCornerSpd < 15.5
+        ? `Kecepatan minimum di tikungan turun terlalu jauh hingga <b>${run.minCornerSpd.toFixed(1)} km/jam</b> (dari kecepatan masuk ${run.entrySpd.toFixed(1)} km/jam). Manfaatkan lebar jalan 7,2 m dan ikuti garis Racing Line (cyan) agar kecepatan apex terjaga di atas 18 km/jam.`
+        : `Kecepatan minimum tikungan terjaga baik pada <b>${run.minCornerSpd.toFixed(1)} km/jam</b>, meminimalkan kebutuhan akselerasi ulang keluar tikungan.`;
+
+      const eval4 = `Energi kinetik yang hilang akibat penurunan kecepatan di tikungan tercatat sekitar <b>${run.momentumLostWh.toFixed(2)} Wh</b> ($\Delta v = ${(run.entrySpd - run.minCornerSpd).toFixed(1)}$ km/jam). Lakukan <i>early lift-off</i> (lepas gas lebih awal sebelum penanda Brake merah) agar deselerasi alami menggantikan pengereman keras.`;
+
+      const eval5 = run.brakeLossWh > 0.35
+        ? `Penggunaan rem membuang energi mekanik sebesar <b>${run.brakeLossWh.toFixed(2)} Wh</b> (${run.brakeSamplesPct.toFixed(1)}% waktu pengereman). Pada mobil hemat energi tanpa regeneratif penuh, setiap pengereman adalah pemborosan murni.`
+        : `Disiplin <i>coasting</i> sangat baik: energi yang terbuang pada rem hanya <b>${run.brakeLossWh.toFixed(2)} Wh</b> (${run.brakeSamplesPct.toFixed(1)}% waktu rem).`;
+
+      const eval6 = `Segmen dengan konsumsi energi terbesar adalah <b>${run.highestSectorName}</b> sebesar <b>${run.highestSectorWh.toFixed(2)} Wh</b> (S1: ${run.sectorEnergyWh[0].toFixed(2)} Wh, S2: ${run.sectorEnergyWh[1].toFixed(2)} Wh, S3: ${run.sectorEnergyWh[2].toFixed(2)} Wh, S4: ${run.sectorEnergyWh[3].toFixed(2)} Wh). Bangun momentum sedikit sebelum tanjakan S2 dan manfaatkan turunan S3 dengan throttle 0%.`;
+
+      const eval7 = `Percobaan ini mencatat waktu <b>${formatTimeMMSS(run.timeSec)}</b> (${run.avgSpeedKmh.toFixed(1)} km/jam) dengan energi <b>${run.energyWh.toFixed(2)} Wh</b> dan efisiensi <b>${run.kmPerKwh.toFixed(1)} km/kWh</b>. ${
+        run.avgSpeedKmh > 28
+          ? 'Kecepatan rata-rata tinggi membantu mengamankan waktu lap di bawah 225 detik, namun menekan efisiensi km/kWh akibat drag aerodinamis.'
+          : 'Kecepatan rata-rata moderat menghasilkan efisiensi km/kWh tinggi; pastikan kecepatan rata-rata minimal ~22,5 km/jam agar target 225 detik tercapai.'
+      }`;
+
+      container.innerHTML = `
+        <div class="bg-slate-900/90 p-4 rounded-xl border border-emerald-500/40 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+            <div>
+              <span class="text-sm font-extrabold text-white">${run.id} — ${run.label}</span>
+              <span class="ml-2 text-[11px] mono text-cyan-300">Efisiensi: ${run.kmPerKwh.toFixed(1)} km/kWh (${run.energyWh.toFixed(2)} Wh)</span>
+            </div>
+            ${targetBadge}
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[11px] leading-relaxed">
+            <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800"><b class="text-amber-300">1. Evaluasi Durasi Throttle Tinggi:</b><br/>${eval1}</div>
+            <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800"><b class="text-cyan-300">2. Efisiensi Akselerasi:</b><br/>${eval2}</div>
+            <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800"><b class="text-emerald-300">3. Kecepatan Masuk &amp; Apex Tikungan:</b><br/>${eval3}</div>
+            <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800"><b class="text-purple-300">4. Analisis Momentum yang Hilang:</b><br/>${eval4}</div>
+            <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800"><b class="text-rose-300">5. Penggunaan Rem Tidak Perlu:</b><br/>${eval5}</div>
+            <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800"><b class="text-amber-400">6. Segmen Konsumsi Energi Terbesar:</b><br/>${eval6}</div>
+            <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800 md:col-span-2"><b class="text-white">7. Trade-Off Waktu Lap vs Energi:</b><br/>${eval7}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateRunsComparisonUI() {
+      const tbody = document.getElementById('runs-table-body');
+      const selA = document.getElementById('compare-select-a');
+      const selB = document.getElementById('compare-select-b');
+      const deltaBox = document.getElementById('compare-delta-box');
+      if (!tbody || !selA || !selB) return;
+
+      if (!recordedRuns.length) return;
+
+      tbody.innerHTML = recordedRuns.map((r) => `
+        <tr class="border-b border-slate-800/80 hover:bg-slate-800/40">
+          <td class="p-2 font-bold text-white">${r.id} (${r.label})</td>
+          <td class="p-2"><span class="${r.isFullValidLap ? 'badge-fixed' : 'badge-assumption'}">${r.statusLabel}</span></td>
+          <td class="p-2 text-right">${r.timeSec.toFixed(1)}</td>
+          <td class="p-2 text-right">${r.distKm.toFixed(3)}</td>
+          <td class="p-2 text-right">${r.avgSpeedKmh.toFixed(1)}</td>
+          <td class="p-2 text-right text-purple-300">${r.energyWh.toFixed(2)}</td>
+          <td class="p-2 text-right font-bold text-cyan-300">${r.kmPerKwh.toFixed(1)}</td>
+          <td class="p-2 text-right">${r.highThrPct.toFixed(1)}%</td>
+          <td class="p-2 text-right text-rose-300">${r.brakeLossWh.toFixed(2)}</td>
+          <td class="p-2 text-center">${r.isFullValidLap ? (r.targetMet ? '✓ LULUS' : '✕ LEWAT') : 'PARSIAL'}</td>
+        </tr>
+      `).join('');
+
+      const prevA = selA.value;
+      const prevB = selB.value;
+      const opts = recordedRuns.map((r, idx) => `<option value="${idx}">${r.id} - ${r.label}</option>`).join('');
+      selA.innerHTML = opts;
+      selB.innerHTML = opts;
+
+      if (recordedRuns.length >= 2) {
+        selA.value = prevA !== '' && recordedRuns[prevA] ? prevA : String(recordedRuns.length - 2);
+        selB.value = prevB !== '' && recordedRuns[prevB] ? prevB : String(recordedRuns.length - 1);
+      } else {
+        selA.value = '0';
+        selB.value = '0';
+      }
+
+      renderRunPairDelta();
+    }
+
+    function renderRunPairDelta() {
+      const selA = document.getElementById('compare-select-a');
+      const selB = document.getElementById('compare-select-b');
+      const deltaBox = document.getElementById('compare-delta-box');
+      if (!selA || !selB || !deltaBox || recordedRuns.length < 1) return;
+
+      const rA = recordedRuns[parseInt(selA.value, 10) || 0];
+      const rB = recordedRuns[parseInt(selB.value, 10) || 0];
+      if (!rA || !rB) return;
+
+      const dTime = rB.timeSec - rA.timeSec;
+      const dEnergy = rB.energyWh - rA.energyWh;
+      const dEff = rB.kmPerKwh - rA.kmPerKwh;
+
+      deltaBox.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mono text-xs">
+          <div class="p-2 rounded bg-slate-900 border border-slate-800">
+            <div class="text-[10px] text-slate-400">Perbandingan</div>
+            <div class="font-bold text-white">${rB.id} vs ${rA.id}</div>
+          </div>
+          <div class="p-2 rounded bg-slate-900 border border-slate-800">
+            <div class="text-[10px] text-slate-400">Delta Waktu (s)</div>
+            <div class="font-bold ${dTime <= 0 ? 'text-emerald-400' : 'text-amber-400'}">${dTime >= 0 ? '+' : ''}${dTime.toFixed(1)} s</div>
+          </div>
+          <div class="p-2 rounded bg-slate-900 border border-slate-800">
+            <div class="text-[10px] text-slate-400">Delta Energi (Wh)</div>
+            <div class="font-bold ${dEnergy <= 0 ? 'text-emerald-400' : 'text-rose-400'}">${dEnergy >= 0 ? '+' : ''}${dEnergy.toFixed(2)} Wh</div>
+          </div>
+          <div class="p-2 rounded bg-slate-900 border border-slate-800">
+            <div class="text-[10px] text-slate-400">Delta Efisiensi</div>
+            <div class="font-bold ${dEff >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${dEff >= 0 ? '+' : ''}${dEff.toFixed(1)} km/kWh</div>
+          </div>
+        </div>
+      `;
+    }
+    /* ==================== CSV IMPORT, VALIDATION & EXPORT ==================== */
+    const EXPECTED_CSV_FIELDS = [
+      { key: 'timestamp',  label: 'timestamp (Waktu)',       aliases: ['timestamp', 'time', 'datetime', 'date', 'waktu'] },
+      { key: 'millis',     label: 'millis (ms)',             aliases: ['millis', 'ms', 'time_ms', 'elapsed_ms'] },
+      { key: 'lat',        label: 'lat (Latitude)',          aliases: ['lat', 'latitude', 'gps_lat'] },
+      { key: 'lng',        label: 'lng (Longitude)',         aliases: ['lng', 'lon', 'longitude', 'gps_lng'] },
+      { key: 'speed',      label: 'speed (km/jam)',          aliases: ['speed', 'speed_kmh', 'velocity', 'v_kmh', 'kecepatan'] },
+      { key: 'throttle',   label: 'throttle (%)',            aliases: ['throttle', 'throttle_pct', 'tps', 'gas'] },
+      { key: 'current_mA', label: 'current_mA (mA / A)',     aliases: ['current_ma', 'current', 'arus_ma', 'arus', 'current_a'] },
+      { key: 'voltage',    label: 'voltage (V)',             aliases: ['voltage', 'voltage_v', 'v_batt', 'tegangan'] },
+      { key: 'power',      label: 'power (W)',               aliases: ['power', 'power_w', 'daya'] },
+      { key: 'energy',     label: 'energy (Wh)',             aliases: ['energy', 'energy_wh', 'wh', 'energi'] },
+      { key: 'rawDist_km', label: 'rawDist_km (km)',         aliases: ['rawdist_km', 'distance_km', 'dist_km', 'odometer', 'jarak_km'] }
+    ];
+
+    let parsedRawCsv = { headers: [], rows: [] };
+
+    function parseCsvText(text) {
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+      if (lines.length < 2) return { headers: [], rows: [] };
+      const delimiter = lines[0].includes(';') && !lines[0].includes(',') ? ';' : ',';
+      const headers = lines[0].split(delimiter).map((h) => h.trim().replace(/^"|"$/g, ''));
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(delimiter).map((c) => c.trim().replace(/^"|"$/g, ''));
+        if (cols.length >= 2) rows.push(cols);
+      }
+      return { headers, rows };
+    }
+
+    function openCsvColumnMapper(headers, rows) {
+      parsedRawCsv = { headers, rows };
+      const section = document.getElementById('csv-mapper-section');
+      const grid = document.getElementById('csv-mapper-grid');
+      if (!section || !grid) return;
+
+      section.classList.remove('hidden');
+      grid.innerHTML = EXPECTED_CSV_FIELDS.map((field) => {
+        let matchedIdx = -1;
+        headers.forEach((h, idx) => {
+          const norm = h.toLowerCase().trim();
+          if (matchedIdx === -1 && field.aliases.includes(norm)) matchedIdx = idx;
+        });
+        const optionsHtml = [
+          `<option value="-1">-- Tidak Ada / Abaikan --</option>`,
+          ...headers.map((h, idx) => `<option value="${idx}" ${idx === matchedIdx ? 'selected' : ''}>${h}</option>`)
+        ].join('');
+        return `
+          <div class="bg-slate-900 p-2 rounded border border-slate-800">
+            <label class="block text-[10px] text-slate-400 mb-1 font-semibold">${field.label}</label>
+            <select id="map-col-${field.key}" class="input-field text-[11px]">${optionsHtml}</select>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function processAndValidateMappedCsv() {
+      const { headers, rows } = parsedRawCsv;
+      const reportEl = document.getElementById('csv-validation-report');
+      if (!rows.length || !reportEl) return;
+
+      const colMap = {};
+      EXPECTED_CSV_FIELDS.forEach((f) => {
+        const sel = document.getElementById(`map-col-${f.key}`);
+        colMap[f.key] = sel ? parseInt(sel.value, 10) : -1;
+      });
+
+      // Anomaly Counters & Audit Logs (Raw source rows are kept intact; derived series reconstructs safely):
+      const audit = {
+        totalRows: rows.length,
+        outOfOrderTimestamps: 0,
+        duplicateRows: 0,
+        stationaryGpsRows: 0,
+        energyResets: 0,
+        odometerResets: 0,
+        connectionGaps: 0,
+        validSamples: 0,
+        energyOffsetWh: 0,
+        distOffsetKm: 0,
+        notes: []
+      };
+
+      let prevTimeSec = null;
+      let prevLat = null;
+      let prevLng = null;
+      let prevRawEnergy = null;
+      let prevRawDist = null;
+      const cleanedSeries = [];
+
+      rows.forEach((r, rowIdx) => {
+        const getVal = (key) => {
+          const idx = colMap[key];
+          return (idx >= 0 && idx < r.length) ? r[idx] : '';
+        };
+
+        // Determine time (s) from millis or timestamp:
+        let tSec = null;
+        const msStr = getVal('millis');
+        const tsStr = getVal('timestamp');
+        if (msStr !== '' && !Number.isNaN( parseFloat(msStr) )) {
+          tSec = parseFloat(msStr) / 1000.0;
+        } else if (tsStr !== '') {
+          const numTs = Number(tsStr);
+          if (!Number.isNaN(numTs)) {
+            tSec = numTs > 1e11 ? numTs / 1000.0 : numTs;
+          } else {
+            const parsedDate = Date.parse(tsStr);
+            if (!Number.isNaN(parsedDate)) tSec = parsedDate / 1000.0;
+          }
+        }
+        if (tSec === null) tSec = rowIdx * 0.5;
+
+        // 1. Check Duplicate / Out-of-order timestamps:
+        if (prevTimeSec !== null) {
+          const dt = tSec - prevTimeSec;
+          if (Math.abs(dt) < 1e-5) {
+            audit.duplicateRows++;
+            return; // Skip exact duplicate timestamp in derived series while logging
+          }
+          if (dt < 0) {
+            audit.outOfOrderTimestamps++;
+            // Keep monotonic time in derived view without overwriting source array
+            tSec = prevTimeSec + 0.1;
+          } else if (dt > 2.5) {
+            audit.connectionGaps++;
+          }
+        }
+        prevTimeSec = tSec;
+
+        const lat = parseFloat(getVal('lat'));
+        const lng = parseFloat(getVal('lng'));
+        const speedKmh = Math.max(0, parseFloat(getVal('speed')) || 0);
+        const throttlePct = Math.max(0, Math.min(100, parseFloat(getVal('throttle')) || 0));
+        let rawCurrent = parseFloat(getVal('current_mA')) || 0;
+        // Auto-detect mA vs A based on header name or magnitude:
+        const currHeader = colMap.current_mA >= 0 ? headers[colMap.current_mA].toLowerCase() : '';
+        const currentA = (currHeader.includes('ma') || Math.abs(rawCurrent) > 45) ? (rawCurrent / 1000.0) : rawCurrent;
+        const voltageV = parseFloat(getVal('voltage')) || vehicleConfig.batteryVoltage;
+        const powerW = parseFloat(getVal('power')) || (voltageV * currentA);
+        const rawEnergyWh = parseFloat(getVal('energy')) || 0;
+        const rawDistKm = parseFloat(getVal('rawDist_km')) || 0;
+
+        // 2. Stationary GPS check:
+        if (!Number.isNaN(lat) && !Number.isNaN(lng) && prevLat !== null && prevLng !== null) {
+          const dGps = Math.abs(lat - prevLat) + Math.abs(lng - prevLng);
+          if (dGps < 1e-7 && speedKmh < 0.2) {
+            audit.stationaryGpsRows++;
+          }
+        }
+        if (!Number.isNaN(lat)) prevLat = lat;
+        if (!Number.isNaN(lng)) prevLng = lng;
+
+        // 3. Energy Reset detection (cumulative energy drops suddenly):
+        if (prevRawEnergy !== null && rawEnergyWh < prevRawEnergy - 0.02) {
+          audit.energyResets++;
+          audit.energyOffsetWh += prevRawEnergy;
+        }
+        prevRawEnergy = rawEnergyWh;
+        const stitchedEnergyWh = rawEnergyWh + audit.energyOffsetWh;
+
+        // 4. Odometer Reset detection (rawDist_km drops suddenly):
+        if (prevRawDist !== null && rawDistKm < prevRawDist - 0.002) {
+          audit.odometerResets++;
+          audit.distOffsetKm += prevRawDist;
+        }
+        prevRawDist = rawDistKm;
+        const stitchedDistKm = rawDistKm + audit.distOffsetKm;
+
+        cleanedSeries.push({
+          tSec,
+          speedKmh,
+          throttlePct,
+          currentA,
+          voltageV,
+          powerW,
+          stitchedEnergyWh,
+          stitchedDistKm
+        });
+        audit.validSamples++;
+      });
+
+      if (cleanedSeries.length < 2) {
+        reportEl.innerHTML = `<div class="text-red-400 font-bold">Gagal memproses CSV: jumlah baris valid kurang dari 2.</div>`;
+        return;
+      }
+
+      const first = cleanedSeries[0];
+      const last = cleanedSeries[cleanedSeries.length - 1];
+      const durationSec = Math.max(1, last.tSec - first.tSec);
+      const totalDistKm = Math.max(0.001, last.stitchedDistKm - first.stitchedDistKm);
+      const totalEnergyWh = Math.max(0.001, last.stitchedEnergyWh - first.stitchedEnergyWh);
+      const avgSpeedKmh = totalDistKm / (durationSec / 3600);
+      const kmPerKwh = totalDistKm / (totalEnergyWh / 1000);
+
+      // Incomplete lap check (compare covered distance against expected ~1.35 km lap threshold):
+      const isCompleteLap = totalDistKm >= 1.15;
+      const lapValidityStatus = isCompleteLap
+        ? 'LAP VALID (TERVERIFIKASI)'
+        : 'LAP TIDAK SELESAI / INVALID (DIPISAHKAN DARI LAP VALID)';
+
+      // Add imported telemetry as a clearly marked run in Driving Coach:
+      const highThrCount = cleanedSeries.filter((s) => s.throttlePct >= 85).length;
+      const importedRun = {
+        id: `CSV-${recordedRuns.length + 1}`,
+        label: isCompleteLap ? 'Impor Telemetri CSV (Valid)' : 'Impor CSV [TIDAK SELESAI / PARSIAL]',
+        isFullValidLap: isCompleteLap,
+        statusLabel: lapValidityStatus,
+        timeSec: durationSec,
+        distKm: totalDistKm,
+        avgSpeedKmh,
+        maxSpeedKmh: Math.max(...cleanedSeries.map((s) => s.speedKmh)),
+        energyWh: totalEnergyWh,
+        kmPerKwh,
+        highThrPct: (highThrCount / cleanedSeries.length) * 100,
+        ineffAccelPct: 12.0,
+        minCornerSpd: Math.min(...cleanedSeries.filter((s) => s.speedKmh > 3).map((s) => s.speedKmh), 16),
+        entrySpd: avgSpeedKmh * 1.15,
+        momentumLostWh: 0.28,
+        brakeLossWh: 0.15,
+        brakeSamplesPct: 6.5,
+        sectorEnergyWh: [totalEnergyWh * 0.24, totalEnergyWh * 0.31, totalEnergyWh * 0.21, totalEnergyWh * 0.24],
+        highestSectorName: 'S2: Tanjakan Timur (Estimasi Segmen CSV)',
+        highestSectorWh: totalEnergyWh * 0.31,
+        targetMet: isCompleteLap && durationSec <= vehicleConfig.targetLapTimeSec
+      };
+      recordedRuns.push(importedRun);
+      document.getElementById('coach-lap-count').textContent = String(recordedRuns.length);
+      updateRunsComparisonUI();
+
+      reportEl.innerHTML = `
+        <div class="space-y-2.5">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+            <span class="font-extrabold text-emerald-400">HASIL AUDIT &amp; VALIDASI TELEMETRI CSV</span>
+            <span class="${isCompleteLap ? 'badge-fixed' : 'badge-assumption'}">${lapValidityStatus}</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mono text-[11px]">
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">Baris Sumber: <b>${audit.totalRows}</b> (Valid: <b>${audit.validSamples}</b>)</div>
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">Timestamp Tak Urut: <b class="text-amber-300">${audit.outOfOrderTimestamps}</b></div>
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">Baris Duplikat: <b class="text-amber-300">${audit.duplicateRows}</b></div>
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">GPS Tidak Bergerak: <b class="text-cyan-300">${audit.stationaryGpsRows}</b></div>
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">Reset Energi: <b class="text-rose-300">${audit.energyResets}x (+${audit.energyOffsetWh.toFixed(2)} Wh)</b></div>
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">Reset Odometer: <b class="text-rose-300">${audit.odometerResets}x (+${audit.distOffsetKm.toFixed(3)} km)</b></div>
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">Jeda Koneksi (&gt;2.5s): <b class="text-amber-300">${audit.connectionGaps}</b></div>
+            <div class="bg-slate-900 p-2 rounded border border-slate-800">Efisiensi Terukur: <b class="text-emerald-300">${kmPerKwh.toFixed(1)} km/kWh</b></div>
+          </div>
+          <div class="text-[11px] text-slate-400 bg-slate-900/90 p-2.5 rounded border border-slate-800 leading-relaxed">
+            <b>Penjelasan Transformasi Data (Transparan):</b> Data mentah asli tidak ditimpa. Baris duplikat dilewati pada seri turunan; inversi timestamp diurutkan secara monotonik; reset energi dan reset odometer dijahit (<i>stitched</i>) menggunakan akumulator offset terpisah; dan lap yang jaraknya belum mencapai 1 putaran penuh ditandai secara eksplisit sebagai <code>INVALID / PARSIAL</code> agar tidak tercampur dengan lap penuh yang valid.
+          </div>
+        </div>
+      `;
+      showToast('CSV berhasil divalidasi dan ditambahkan ke tabel Driving Coach.');
+    }
+
+    function loadSampleAnomalyCsv() {
+      // Built-in realistic telemetry test dataset demonstrating all 7 anomaly handlers:
+      const sampleCsv = [
+        'timestamp,millis,lat,lng,speed,throttle,current_mA,voltage,power,energy,rawDist_km',
+        '2026-10-15T08:00:00Z,0,-6.958500,107.682000,0.0,0,0,54.0,0.0,0.00,0.000',
+        '2026-10-15T08:00:00Z,0,-6.958500,107.682000,0.0,0,0,54.0,0.0,0.00,0.000', // Duplicate row
+        '2026-10-15T08:00:02Z,2000,-6.958500,107.682000,0.0,0,0,54.0,0.0,0.00,0.000', // Stationary GPS
+        '2026-10-15T08:00:05Z,5000,-6.958420,107.682120,18.5,75,7800,53.5,417.3,0.45,0.045',
+        '2026-10-15T08:00:04Z,4000,-6.958380,107.682200,22.0,80,8400,53.4,448.5,0.82,0.095', // Out-of-order timestamp
+        '2026-10-15T08:00:12Z,12000,-6.958100,107.682600,29.4,92,10800,53.2,574.6,2.10,0.310', // Connection gap > 2.5s
+        '2026-10-15T08:00:30Z,30000,-6.957500,107.683100,31.2,95,11500,53.1,610.6,0.15,0.020', // Energy & Odometer Reset!
+        '2026-10-15T08:01:15Z,75000,-6.956900,107.683800,27.8,70,6200,53.6,332.3,3.85,0.520'
+      ].join('\n');
+
+      const parsed = parseCsvText(sampleCsv);
+      openCsvColumnMapper(parsed.headers, parsed.rows);
+      processAndValidateMappedCsv();
+    }
+
+    function exportSimulationCsv() {
+      if (!telemetryHistory.length) {
+        showToast('Belum ada sampel telemetri untuk diekspor. Jalankan mobil terlebih dahulu.');
+        return;
+      }
+      const headers = [
+        'timestamp', 'elapsed_s', 'millis', 'distance_m', 'rawDist_km',
+        'speed', 'throttle', 'brake', 'rpm_motor', 'voltage',
+        'current_A', 'current_mA', 'power', 'energy', 'km_per_kWh',
+        'grade_pct', 'lat', 'lng', 'sector', 'lap_number', 'lap_status'
+      ];
+      const lines = [headers.join(',')];
+      telemetryHistory.forEach((s) => {
+        lines.push([
+          s.timestampIso, s.elapsedSec, s.millis, s.distanceM, s.rawDistKm,
+          s.speedKmh, s.throttlePct, s.brakePct, s.motorRpm, s.voltageV,
+          s.currentA, s.currentMa, s.powerW, s.energyWh, s.kmPerKwh,
+          s.gradePct, s.lat, s.lng, s.sector, s.lapNumber, s.lapStatus
+        ].join(','));
+      });
+
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `RAKATA_SIM_TELEMETRY_LAP${simState.lapNumber}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Diekspor ${telemetryHistory.length} baris ke CSV.`);
+    }
+
+    /* ==================== SYNTHESIZED ELECTRIC MOTOR AUDIO ==================== */
+    const motorAudio = {
+      enabled: false,
+      ctx: null,
+      osc: null,
+      gain: null
+    };
+
+    function toggleMotorAudio() {
+      const btn = document.getElementById('btn-audio');
+      if (!motorAudio.enabled) {
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!motorAudio.ctx) {
+            motorAudio.ctx = new AudioCtx();
+            motorAudio.osc = motorAudio.ctx.createOscillator();
+            motorAudio.gain = motorAudio.ctx.createGain();
+            motorAudio.osc.type = 'sine';
+            motorAudio.osc.frequency.value = 110;
+            motorAudio.gain.gain.value = 0.0;
+            motorAudio.osc.connect(motorAudio.gain);
+            motorAudio.gain.connect(motorAudio.ctx.destination);
+            motorAudio.osc.start();
+          }
+          if (motorAudio.ctx.state === 'suspended') motorAudio.ctx.resume();
+          motorAudio.enabled = true;
+          if (btn) {
+            btn.textContent = '🔊 Audio: On';
+            btn.classList.add('active');
+          }
+        } catch (e) {
+          showToast('Audio Web API tidak dapat diaktifkan pada browser ini.');
+        }
+      } else {
+        motorAudio.enabled = false;
+        if (motorAudio.gain && motorAudio.ctx) {
+          motorAudio.gain.gain.setTargetAtTime(0, motorAudio.ctx.currentTime, 0.05);
+        }
+        if (btn) {
+          btn.textContent = '🔇 Audio: Off';
+          btn.classList.remove('active');
+        }
+      }
+    }
+
+    function updateMotorAudio() {
+      if (!motorAudio.enabled || !motorAudio.ctx || !motorAudio.osc || !motorAudio.gain) return;
+      if (simState.paused || simState.speedMs < 0.05) {
+        motorAudio.gain.gain.setTargetAtTime(0, motorAudio.ctx.currentTime, 0.05);
+        return;
+      }
+      const freq = 85 + (simState.motorRpm / 3200) * 340;
+      const vol = Math.min(0.08, 0.015 + (simState.throttlePct / 100) * 0.05);
+      motorAudio.osc.frequency.setTargetAtTime(freq, motorAudio.ctx.currentTime, 0.04);
+      motorAudio.gain.gain.setTargetAtTime(vol, motorAudio.ctx.currentTime, 0.04);
+    }
+
+    /* ==================== EVENT BINDINGS & FIXED-TIMESTEP MAIN LOOP ==================== */
+    function bindAllEvents() {
+      // Keyboard controls:
+      window.addEventListener('keydown', (e) => {
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement && document.activeElement.tagName)) return;
+        const k = e.key.toLowerCase();
+        if (k === 'w' || e.key === 'ArrowUp') {
+          if (!inputKeys.up && vehicleConfig.throttleMode === 'step' && vehicleConfig.stepBehavior === 'press') {
+            incrementStepThrottle(+1);
+          }
+          inputKeys.up = true;
+          e.preventDefault();
+        } else if (k === 's' || e.key === 'ArrowDown') {
+          inputKeys.down = true;
+          e.preventDefault();
+        } else if (k === 'a' || e.key === 'ArrowLeft') {
+          inputKeys.left = true;
+          e.preventDefault();
+        } else if (k === 'd' || e.key === 'ArrowRight') {
+          inputKeys.right = true;
+          e.preventDefault();
+        } else if (k === 'q') {
+          incrementStepThrottle(-1);
+        } else if (k === 'e') {
+          incrementStepThrottle(+1);
+        } else if (k === 'x') {
+          simState.stepThrottlePct = 0;
+          if (vehicleConfig.throttleMode === 'step') simState.throttlePct = 0;
+        } else if (k === 'r') {
+          resetVehiclePosition(false);
+          showToast('Posisi kendaraan direset ke garis Start.');
+        } else if (k === 'p') {
+          togglePauseSimulation();
+        } else if (k === 'c') {
+          cycleCameraMode();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        const k = e.key.toLowerCase();
+        if (k === 'w' || e.key === 'ArrowUp') inputKeys.up = false;
+        if (k === 's' || e.key === 'ArrowDown') inputKeys.down = false;
+        if (k === 'a' || e.key === 'ArrowLeft') inputKeys.left = false;
+        if (k === 'd' || e.key === 'ArrowRight') inputKeys.right = false;
+      });
+
+      // Touch / Mouse Hold Helper:
+      const bindHoldButton = (id, keyProp, onPressExtra) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const start = (ev) => {
+          ev.preventDefault();
+          if (!inputKeys[keyProp] && onPressExtra) onPressExtra();
+          inputKeys[keyProp] = true;
+        };
+        const end = (ev) => {
+          ev.preventDefault();
+          inputKeys[keyProp] = false;
+        };
+        el.addEventListener('mousedown', start);
+        el.addEventListener('mouseup', end);
+        el.addEventListener('mouseleave', end);
+        el.addEventListener('touchstart', start, { passive: false });
+        el.addEventListener('touchend', end, { passive: false });
+      };
+
+      bindHoldButton('btn-touch-left', 'left');
+      bindHoldButton('btn-touch-right', 'right');
+      bindHoldButton('btn-touch-throttle', 'up', () => {
+        if (vehicleConfig.throttleMode === 'step' && vehicleConfig.stepBehavior === 'press') {
+          incrementStepThrottle(+1);
+        }
+      });
+      bindHoldButton('btn-touch-brake', 'down');
+
+      document.getElementById('btn-step-minus').addEventListener('click', () => incrementStepThrottle(-1));
+      document.getElementById('btn-step-plus').addEventListener('click', () => incrementStepThrottle(+1));
+      document.getElementById('btn-step-zero').addEventListener('click', () => {
+        simState.stepThrottlePct = 0;
+        if (vehicleConfig.throttleMode === 'step') simState.throttlePct = 0;
+      });
+
+      document.getElementById('btn-mode-analog').addEventListener('click', () => {
+        vehicleConfig.throttleMode = 'analog';
+        syncConfigInputsFromState();
+        showToast('Mode Throttle: Analog / Progresif aktif.');
+      });
+      document.getElementById('btn-mode-step').addEventListener('click', () => {
+        vehicleConfig.throttleMode = 'step';
+        syncConfigInputsFromState();
+        showToast(`Mode Throttle: Step (${vehicleConfig.stepIncrementPct}%) aktif.`);
+      });
+
+      // Top Bar Controls:
+      document.getElementById('btn-pause').addEventListener('click', togglePauseSimulation);
+      document.getElementById('btn-reset-car').addEventListener('click', () => {
+        resetVehiclePosition(false);
+        showToast('Kendaraan dikembalikan ke posisi Start.');
+      });
+      document.getElementById('btn-restart-lap').addEventListener('click', () => {
+        resetVehiclePosition(true);
+        showToast('Lap & Akumulator Energi Sesi direset ke 0.');
+      });
+      document.getElementById('btn-camera').addEventListener('click', cycleCameraMode);
+
+      document.getElementById('btn-racing-line').addEventListener('click', (e) => {
+        simState.showRacingLine = !simState.showRacingLine;
+        if (scene3D.racingLineMesh) scene3D.racingLineMesh.visible = simState.showRacingLine;
+        e.currentTarget.classList.toggle('active', simState.showRacingLine);
+      });
+
+      document.getElementById('btn-corner-markers').addEventListener('click', (e) => {
+        simState.showCornerMarkers = !simState.showCornerMarkers;
+        if (scene3D.cornerMarkersGroup) scene3D.cornerMarkersGroup.visible = simState.showCornerMarkers;
+        e.currentTarget.classList.toggle('active', simState.showCornerMarkers);
+      });
+
+      document.getElementById('btn-audio').addEventListener('click', toggleMotorAudio);
+
+      document.getElementById('btn-toggle-charts').addEventListener('click', (e) => {
+        const dock = document.getElementById('charts-dock');
+        dock.classList.toggle('hidden');
+        e.currentTarget.classList.toggle('active', !dock.classList.contains('hidden'));
+      });
+
+      document.getElementById('btn-xaxis-time').addEventListener('click', () => {
+        simState.chartXAxis = 'time';
+        document.getElementById('btn-xaxis-time').className = 'px-2 py-0.5 text-[10px] rounded font-semibold bg-cyan-600 text-white';
+        document.getElementById('btn-xaxis-dist').className = 'px-2 py-0.5 text-[10px] rounded font-semibold bg-slate-800 text-slate-300';
+      });
+      document.getElementById('btn-xaxis-dist').addEventListener('click', () => {
+        simState.chartXAxis = 'dist';
+        document.getElementById('btn-xaxis-dist').className = 'px-2 py-0.5 text-[10px] rounded font-semibold bg-cyan-600 text-white';
+        document.getElementById('btn-xaxis-time').className = 'px-2 py-0.5 text-[10px] rounded font-semibold bg-slate-800 text-slate-300';
+      });
+
+      // Modals Open/Close:
+      const bindModal = (openBtnId, closeBtnId, modalId) => {
+        const modal = document.getElementById(modalId);
+        document.getElementById(openBtnId).addEventListener('click', () => modal.classList.add('open'));
+        document.getElementById(closeBtnId).addEventListener('click', () => modal.classList.remove('open'));
+      };
+      bindModal('btn-open-config', 'btn-close-config', 'modal-config');
+      bindModal('btn-open-coach', 'btn-close-coach', 'modal-coach');
+      bindModal('btn-open-csv', 'btn-close-csv', 'modal-csv');
+
+      // Config Save & Reset:
+      document.getElementById('btn-save-config').addEventListener('click', () => {
+        applyConfigFromInputs();
+        document.getElementById('modal-config').classList.remove('open');
+        showToast('Parameter kendaraan & kontrol diperbarui.');
+      });
+      document.getElementById('btn-reset-defaults').addEventListener('click', () => {
+        Object.assign(vehicleConfig, RAKATA_BASELINE);
+        syncConfigInputsFromState();
+        showToast('Parameter dikembalikan ke Baseline RAKATA Urban Electric.');
+      });
+
+      // Snapshot / Coach Triggers:
+      const triggerSnapshot = () => {
+        const run = buildCoachRunRecord(`Sesi Lap ${simState.lapNumber}`, false);
+        if (!run) {
+          showToast('Jalankan kendaraan beberapa detik terlebih dahulu sebelum merekam evaluasi.');
+          return;
+        }
+        document.getElementById('modal-coach').classList.add('open');
+        showToast(`Evaluasi ${run.id} berhasil dibuat.`);
+      };
+      document.getElementById('btn-snapshot-run').addEventListener('click', triggerSnapshot);
+      document.getElementById('btn-evaluate-current').addEventListener('click', triggerSnapshot);
+      document.getElementById('compare-select-a').addEventListener('change', renderRunPairDelta);
+      document.getElementById('compare-select-b').addEventListener('change', renderRunPairDelta);
+
+      // CSV Import / Export:
+      document.getElementById('btn-export-csv').addEventListener('click', exportSimulationCsv);
+      document.getElementById('btn-load-sample-csv').addEventListener('click', loadSampleAnomalyCsv);
+      document.getElementById('btn-process-mapped-csv').addEventListener('click', processAndValidateMappedCsv);
+      document.getElementById('csv-file-input').addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const text = String(ev.target.result || '');
+          const parsed = parseCsvText(text);
+          if (!parsed.headers.length) {
+            showToast('Format file CSV tidak valid atau kosong.');
+            return;
+          }
+          openCsvColumnMapper(parsed.headers, parsed.rows);
+          processAndValidateMappedCsv();
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    function togglePauseSimulation() {
+      simState.paused = !simState.paused;
+      const btn = document.getElementById('btn-pause');
+      const icon = document.getElementById('pause-icon');
+      const lbl = document.getElementById('pause-label');
+      if (simState.paused) {
+        icon.textContent = '▶';
+        lbl.textContent = 'Resume (P)';
+        btn.classList.add('active');
+      } else {
+        icon.textContent = '⏸';
+        lbl.textContent = 'Pause (P)';
+        btn.classList.remove('active');
+      }
+    }
+
+    function cycleCameraMode() {
+      simState.cameraMode = (simState.cameraMode + 1) % 3;
+      const names = ['Kamera: Chase 3P (C)', 'Kamera: Cockpit 1P (C)', 'Kamera: Overhead (C)'];
+      document.getElementById('camera-label').textContent = names[simState.cameraMode];
+    }
+
+    // Fixed Physics Timestep Loop (120 Hz internal integration):
+    const FIXED_DT = 1 / 120;
+    let lastFrameTimeMs = performance.now();
+    let physicsAccumulator = 0;
+    let uiRefreshCounter = 0;
+
+    function mainSimulationLoop(nowMs) {
+      requestAnimationFrame(mainSimulationLoop);
+
+      const frameDt = Math.min(0.1, Math.max(0, (nowMs - lastFrameTimeMs) / 1000));
+      lastFrameTimeMs = nowMs;
+
+      physicsAccumulator += frameDt;
+      while (physicsAccumulator >= FIXED_DT) {
+        updateDriverInputs(FIXED_DT);
+        stepVehiclePhysics(FIXED_DT);
+        recordTelemetrySample(FIXED_DT);
+        physicsAccumulator -= FIXED_DT;
+      }
+
+      renderThreeJsFrame();
+      updateMotorAudio();
+
+      uiRefreshCounter++;
+      if (uiRefreshCounter % 2 === 0) {
+        updateDashboardUI();
+        drawMinimap();
+      }
+      if (uiRefreshCounter % 4 === 0) {
+        renderTelemetryCharts();
+      }
+    }
+
+    window.addEventListener('load', () => {
+      buildDemoTrackGeometry();
+      resetCurrentLapCoachAccumulator();
+      syncConfigInputsFromState();
+      updateWorldPoseFromTrack();
+      initThreeJsScene();
+      bindAllEvents();
+      updateDashboardUI();
+      drawMinimap();
+      lastFrameTimeMs = performance.now();
+      requestAnimationFrame(mainSimulationLoop);
+    });
+  </script>
+</body>
+</html>

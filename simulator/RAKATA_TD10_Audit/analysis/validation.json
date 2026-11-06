@@ -1,0 +1,152 @@
+[
+  {
+    "lap": 1,
+    "speed_rmse": 1.9586573271367855,
+    "time_actual": 231.20000000000002,
+    "time_pred": 209.74130647760714,
+    "dist_pred": 1440,
+    "energy_actual": 8.047990291262137,
+    "energy_pred": 7.681724955156115,
+    "finished": true
+  },
+  {
+    "lap": 2,
+    "speed_rmse": 1.2203731673553095,
+    "time_actual": 212,
+    "time_pred": 206.2080619353499,
+    "dist_pred": 1440,
+    "energy_actual": 7.60884411764706,
+    "energy_pred": 7.5295785575766345,
+    "finished": true
+  },
+  {
+    "lap": 3,
+    "speed_rmse": 0.9011153102941284,
+    "time_actual": 211,
+    "time_pred": 209.9801855615379,
+    "dist_pred": 1440,
+    "energy_actual": 7.625095145631068,
+    "energy_pred": 7.2455804542736795,
+    "finished": true
+  },
+  {
+    "lap": 4,
+    "speed_rmse": 0.9988263778496125,
+    "time_actual": 214.8,
+    "time_pred": 212.8918787033853,
+    "dist_pred": 1440,
+    "energy_actual": 7.67609708737864,
+    "energy_pred": 7.3682009853863875,
+    "finished": true
+  },
+  {
+    "lap": 5,
+    "speed_rmse": 1.0561830311255695,
+    "time_actual": 217.8,
+    "time_pred": 214.70059946091567,
+    "dist_pred": 1440,
+    "energy_actual": 7.458336274509811,
+    "energy_pred": 7.435231064335536,
+    "finished": true
+  },
+  {
+    "lap": 6,
+    "speed_rmse": 1.8371993352259344,
+    "time_actual": 215,
+    "time_pred": 211.92511961660978,
+    "dist_pred": 1440,
+    "energy_actual": 7.4810893203883495,
+    "energy_pred": 7.48113492956883,
+    "finished": true
+  },
+  {
+    "lap": 7,
+    "speed_rmse": 1.0687204620514306,
+    "time_actual": 235.20000000000002,
+    "time_pred": 246.18028554245342,
+    "dist_pred": 1440,
+    "energy_actual": 6.654200000000003,
+    "energy_pred": 6.7189344054157205,
+    "finished": true
+  },
+  {
+    "lap": 8,
+    "speed_rmse": 1.7112590205273908,
+    "time_actual": 234.60000000000002,
+    "time_pred": 244.60614663200295,
+    "dist_pred": 1440,
+    "energy_actual": 6.831899999999997,
+    "energy_pred": 6.722809708357195,
+    "finished": true
+  },
+  {
+    "lap": 9,
+    "speed_rmse": 0.9720197379978118,
+    "time_actual": 228.4,
+    "time_pred": 221.97106653517608,
+    "dist_pred": 1440,
+    "energy_actual": 6.9407000000000005,
+    "energy_pred": 7.277015069473957,
+    "finished": true
+  },
+  {
+    "lap": 10,
+    "speed_rmse": 1.4197975347880145,
+    "time_actual": 229.60000000000002,
+    "time_pred": 223.20943779752716,
+    "dist_pred": 1440,
+    "energy_actual": 7.117264705882354,
+    "energy_pred": 7.5308253407039185,
+    "finished": true
+  },
+  {
+    "lap": 11,
+    "speed_rmse": 2.1336447008769386,
+    "time_actual": 237.60000000000002,
+    "time_pred": 225.41506019777876,
+    "dist_pred": 1440,
+    "energy_actual": 6.82900291262136,
+    "energy_pred": 6.989067588906847,
+    "finished": true
+  },
+  {
+    "lap": 12,
+    "speed_rmse": 1.9798151417286967,
+    "time_actual": 233,
+    "time_pred": 250.13015944764453,
+    "dist_pred": 1440,
+    "energy_actual": 6.725592156862745,
+    "energy_pred": 6.610697761839904,
+    "finished": true
+  },
+  {
+    "lap": 13,
+    "speed_rmse": 1.8240853670476735,
+    "time_actual": 232,
+    "time_pred": 243.49999999999045,
+    "dist_pred": 1423.8735274660048,
+    "energy_actual": 7.191758823529412,
+    "energy_pred": 6.994346461600746,
+    "finished": false
+  },
+  {
+    "lap": 14,
+    "speed_rmse": 1.629288616405719,
+    "time_actual": 220.20000000000002,
+    "time_pred": 220.26774059277196,
+    "dist_pred": 1440,
+    "energy_actual": 7.503800000000002,
+    "energy_pred": 7.141916111032737,
+    "finished": true
+  },
+  {
+    "lap": 15,
+    "speed_rmse": 1.5937819999273062,
+    "time_actual": 220.4,
+    "time_pred": 216.71654036661832,
+    "dist_pred": 1440,
+    "energy_actual": 7.658552941176474,
+    "energy_pred": 7.3070318238636816,
+    "finished": true
+  }
+]

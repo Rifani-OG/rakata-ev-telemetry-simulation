@@ -1,0 +1,363 @@
+[
+    {
+        "id": "09e2c3412457823e",
+        "type": "tab",
+        "label": "new telem",
+        "disabled": false,
+        "info": "PADDOCK V2 / Import by replacing the existing flow; do not run both parsers concurrently.\nMQTT topics, broker, START/LAP/RESET payload contract and original file node/path preserved. STOP sends {cmd:\"STOP\",timestamp}; laptop stops immediately, HP STOP support depends on its receiver.\nCSV retains original 12 columns: ISO,lat,lng,speed,sat,throttle,current_mA,voltage,power,rawEnergyWh,sessionDistanceKm,millis. Baseline sample at START/LAP excluded to avoid pre-boundary values; up to one sample interval is unmeasured. Valid received duplicates remain in CSV but never added twice to accumulators. Tick never logs or publishes commands.\nAVG = session distance / elapsed wall time including stops. km/kWh = session km * 1000 / session Wh; no 100 cap. Energy tiles are per lap. Threshold 0.01 Wh avoids unstable division near zero. Targets preserved: 220 seconds + carry-over; 7 Wh/lap. Change CFG in function node to adjust.\nDistance input column 10 MUST be km, energy column 9 MUST be Wh. Prefer validated monotonic counters; bounded reset intervals <=3 s use trapezoidal speed and V*I integration. Long gaps with valid counters are recovered; invalid counters and long gaps are not guessed. Counter plausibility does not prove sensor calibration. GPS is used only for position on chart, not accumulated GPS jitter distance. sat is displayed raw: 1 can mean phone lock, not one satellite.\nTrack selector only changes chart. Source arrays embedded unchanged; do not require extra geography files. Projection is nearest segment within 40 m with continuity preference. Missing/stale/off-track GPS hides marker. Elevation is interpolated from stored profile, NOT real-time GPS altitude.\nGEOGRAPHY AUDIT: Sport Jabar nominal s 1440m; lat/lng polyline 1428.26m, endpoint gap 2.33m; elevation 684.03–688.00m. UNEJ nominal 1600m; polyline 1576.19m; endpoint gap 33.81m; start/end elevation differ by -4.31m. UNEJ source explicitly says OSM + schematic reconstruction; turns 4–6 inferred; SRTM30m smoothed. Both profiles are ESTIMATES, not independently verified surveys. UNEJ is not closed; no synthetic closing slope was invented. Public web lookup did not yield a usable independent exact profile. Need surveyed/official closed GPX/KML with elevation to certify. Keep uncertainty label in UI.\nVerification: standalone JS harness only; live Node-RED, MQTT broker, HP receiver, Windows CSV permissions require on-device check. Existing MQTT credentials are not carried in normal Node-RED exports: reuse configured broker.\n",
+        "env": []
+    },
+    {
+        "id": "8327395572f25e20",
+        "type": "function",
+        "z": "09e2c3412457823e",
+        "name": "Paddock V2 — validated counters + session control",
+        "func": "// MQTT CSV contract unchanged: lat,lng,speed,sat,throttle,current_mA,V,W,Wh,km,millis.\n// Distance: trapezoidal speed integration, km/h * seconds / 3600.\n// Optional raw odometer (km) only recovers gaps >3 seconds when plausible.\n// Target 250 s + existing carry-over. Ticks NEVER integrate distance.\n// First sample establishes baseline; pre-baseline/missing intervals are not fabricated.\nconst CFG = { targetTime: 220, targetEnergy: 7, maxSpeed: 80, maxPower: 5000, maxBridge: 3 };\nconst now = Date.now();\nlet st = context.get('paddockV2');\nfunction fresh() { return { running: false, started: 0, lapStart: 0, stopped: 0, lap: 0, d: 0, e: 0, ld: 0, le: 0, carry: 0, prev: null, last: null, tele: null, quality: 'Menunggu telemetri', seen: [], distanceVersion: 3, distanceGapSeconds: 0 }; }\nif (!st) st = fresh();\n// Upgrade without inventing distance for intervals already lost by the old parser.\nif (st.distanceVersion !== 3) { st.distanceVersion = 3; st.prev = null; st.seen = []; st.distanceGapSeconds = 0; }\n\nconst fmt = s => { const n = Math.round(Math.abs(s) * 1000); return (s < 0 ? '-' : '') + String(Math.floor(n / 60000)).padStart(2, '0') + ':' + String(Math.floor(n / 1000) % 60).padStart(2, '0') + '.' + String(n % 1000).padStart(3, '0'); };\nconst eff = (d, e) => e >= 0.01 && d > 0 ? d * 1000 / e : null;\nlet ctl = null, log = null, map = null;\nlet cmd = typeof msg.payload === 'string' ? msg.payload.trim() : '';\nfunction finishLap() { const t = (now - st.lapStart) / 1000; st.last = { time: fmt(t), energy: st.le.toFixed(3), distance: st.ld.toFixed(3), eff: eff(st.ld, st.le), avg: t > 0 ? st.ld * 3600 / t : 0 }; return t; }\nif (cmd === 'START_SESSION') {\n    if (!st.running) { st = fresh(); st.running = true; st.started = st.lapStart = now; st.lap = 1; ctl = { payload: { cmd: 'START', timestamp: now } }; }\n} else if (cmd === 'RECORD_LAP') {\n    if (st.running && now - st.lapStart >= 1000) { const t = finishLap(); st.carry = Math.max(1 - CFG.targetTime, st.carry + CFG.targetTime - t); st.ld = 0; st.le = 0; st.lapStart = now; st.lap++; st.prev = null; ctl = { payload: { cmd: 'LAP', timestamp: now } }; }\n} else if (cmd === 'STOP_SESSION') {\n    if (st.running) { finishLap(); st.running = false; st.stopped = now; st.prev = null; ctl = { payload: { cmd: 'STOP', timestamp: now } }; }\n} else if (cmd === 'RESET_ALL') {\n    st = fresh(); ctl = { payload: { cmd: 'RESET', timestamp: now } };\n} else if (msg.topic !== 'paddock/tick') {\n    if (msg.topic === 'rakata/lap_result' || msg.payload && msg.payload.type === 'LAP_RESULT') return null;\n    const str = Buffer.isBuffer(msg.payload) ? msg.payload.toString() : String(msg.payload || '');\n    const p = str.trim().split(','); if (p.length < 11) return null;\n    const nums = p.slice(0, 11).map(x => x.trim() === '' ? NaN : Number(x));\n    // Optional raw distance can be blank: speed integration remains available.\n    if (!nums.every((v, i) => i === 9 || Number.isFinite(v))) return null;\n    const [lat, lng, speed, sat, throttle, ma, v, w, er, dr, ms] = nums;\n    if (speed < 0 || speed > CFG.maxSpeed || er < 0 || ms < 0 || v < 0 || v > 150 || Math.abs(ma) > 200000) return null;\n    const t = { lat, lng, speed, sat, throttle, ma, v, w, er, dr, ms, at: now };\n    // Retained MQTT is historical, not a new measurement.\n    if (msg.retain === true) return null;\n    const key = nums.join(',');\n    const duplicate = st.seen.includes(key);\n    let outOfOrder = false;\n    if (st.prev && ms < st.prev.ms) { outOfOrder = !(ms < 10000 && (er < st.prev.er || dr < st.prev.dr)); }\n    if (!duplicate && !outOfOrder) {\n        st.seen.push(key); if (st.seen.length > 100) st.seen.shift();\n        let dd = 0, de = 0; st.quality = 'Baseline';\n        if (st.running && st.prev) {\n            const a = st.prev, wall = (now - a.at) / 1000, src = (ms - a.ms) / 1000;\n            const dt = src > 0 && Math.abs(src - wall) < Math.max(2, wall * .25) ? src : wall;\n            const bridge = dt > 0 && dt <= CFG.maxBridge;\n            const rd = dr - a.dr, re = er - a.er;\n            const validD = Number.isFinite(rd) && rd > 0 && rd <= CFG.maxSpeed * dt / 3600 + 0.002;\n            const validE = re >= 0 && re <= CFG.maxPower * dt / 3600 + 0.02;\n            // One source per interval: integrate speed (km/h) over time (seconds).\n            // Do NOT also add raw odometer increments: that would double count.\n            let distanceSource = 'Jarak tidak terukur';\n            if (bridge) { dd = (speed + a.speed) * 0.5 * dt / 3600; distanceSource = 'Jarak: integrasi speed'; }\n            else if (dt > 0 && validD) { dd = rd; distanceSource = 'Jarak: counter saat gap'; }\n            else if (dt > 0) { st.distanceGapSeconds = (st.distanceGapSeconds || 0) + dt; }\n\n            if (validE) de = re; else if (bridge) de = (Math.max(0, v * ma / 1000) + Math.max(0, a.v * a.ma / 1000)) * .5 * dt / 3600;\n            st.quality = distanceSource + (validE ? ' · Wh: counter' : bridge ? ' · Wh: estimasi' : ' · Wh: gap');\n            st.d += dd; st.ld += dd; st.e += de; st.le += de;\n        }\n        st.tele = t; st.prev = t;\n    } else st.quality = duplicate ? 'Duplikat diabaikan' : 'Paket lama diabaikan';\n    // Keep original 12-column CSV and file node. Valid duplicates still logged as received.\n    if (st.running) log = { payload: `${new Date(now).toISOString()},${lat.toFixed(6)},${lng.toFixed(6)},${speed.toFixed(2)},${sat},${throttle},${ma.toFixed(3)},${v.toFixed(2)},${w.toFixed(2)},${er.toFixed(4)},${st.d.toFixed(3)},${ms}` };\n    if (!duplicate && !outOfOrder && sat > 0 && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && lat !== 0 && lng !== 0) map = { payload: { name: 'RAKATA_EV', lat, lon: lng, heading: 0, icon: 'fa-location-arrow', iconColor: 'red', track: true, ttl: 180 } };\n}\nconst t = st.tele || {}, end = st.running ? now : st.stopped;\nconst elapsed = st.lap ? Math.max(0, (end - st.lapStart) / 1000) : 0;\nconst total = st.lap ? Math.max(0, (end - st.started) / 1000) : 0;\nconst remain = CFG.targetTime + st.carry - elapsed;\nconst f = (x, n = 2) => Number(x || 0).toFixed(n);\nconst efficiency = eff(st.d, st.e);\nconst ui = { payload: { speed: f(t.speed, 1), speedPct: Math.min(100, (t.speed || 0) * 2), avgSpeed: total > 0 ? f(st.d * 3600 / total) : '0.00', current: f((t.ma || 0) / 1000), voltage: f(t.v, 1), power: f(t.w, 0), energy: f(st.le, 3), remEnergy: f(Math.max(0, CFG.targetEnergy - st.le), 3), throttle: t.throttle || 0, sat: t.sat || 0, currentLap: st.lap ? fmt(elapsed) : '--:--.---', countdown: st.lap ? fmt(remain) : '--:--.---', countdownColor: remain < 0 ? '#ff647c' : remain < 60 ? '#ffd36b' : '#60e6b1', lastLapTime: st.last ? st.last.time : '--:--.---', lastLapEnergy: st.last ? st.last.energy : '0.000', lastLapKmPerKwh: st.last && st.last.eff !== null ? f(st.last.eff) : '—', distance: f(st.d, 3), lapDistance: f(st.ld, 3), kmPerKwh: efficiency === null ? '—' : f(efficiency), lat: t.lat, lng: t.lng, age: t.at ? (now - t.at) / 1000 : 999, running: st.running, lap: st.lap, quality: st.quality + ((st.distanceGapSeconds || 0) > 0 ? ' · gap jarak ' + st.distanceGapSeconds.toFixed(1) + ' s' : ''), targetTime: CFG.targetTime, distanceGapSeconds: st.distanceGapSeconds || 0, status: st.running ? 'RUNNING' : st.lap ? 'STOPPED' : 'READY' } };\ncontext.set('paddockV2', st);\nreturn [ui, map, null, log, ctl, null];\n",
+        "outputs": 6,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 160,
+        "wires": [
+            [
+                "958e859efecb1678"
+            ],
+            [
+                "446fc8a8d5bc6590"
+            ],
+            [],
+            [
+                "423f49fa070cea38"
+            ],
+            [
+                "c1a5f5b456dc18ac"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "958e859efecb1678",
+        "type": "ui_template",
+        "z": "09e2c3412457823e",
+        "group": "69f66715fbd1f5e6",
+        "name": "Paddock V2 — elevation + avg speed",
+        "order": 1,
+        "width": 18,
+        "height": 10,
+        "format": "<style>\n    .rkt {\n        font: 14px 'Segoe UI', sans-serif;\n        color: #edf5ff;\n        background: #080d14;\n        padding: 10px;\n        box-sizing: border-box;\n        display: grid;\n        grid-template-columns: repeat(6, minmax(0, 1fr));\n        grid-template-rows: 145px 145px 195px;\n        gap: 9px;\n        width: 100%\n    }\n\n    .rkt * {\n        box-sizing: border-box\n    }\n\n    .rkt .box {\n        background: #101a26;\n        border: 1px solid #273647;\n        border-radius: 12px;\n        padding: 12px;\n        display: flex;\n        flex-direction: column;\n        align-items: center;\n        justify-content: center;\n        min-width: 0\n    }\n\n    .rkt .label {\n        font-size: 12px;\n        color: #a2b2c6;\n        letter-spacing: 1px\n    }\n\n    .rkt .value {\n        font-size: clamp(22px, 2.5vw, 36px);\n        font-weight: 750;\n        font-variant-numeric: tabular-nums;\n        line-height: 1.2\n    }\n\n    .rkt .small {\n        font-size: 16px;\n        color: #b9cce0\n    }\n\n    .rkt hr {\n        border: 0;\n        border-top: 1px solid #293746;\n        width: 90%;\n        margin: 8px 0\n    }\n\n    .rkt .time {\n        grid-column: 1/3\n    }\n\n    .rkt .distance {\n        grid-column: 3/4\n    }\n\n    .rkt .eff {\n        grid-column: 4/5\n    }\n\n    .rkt .last {\n        grid-column: 5/7\n    }\n\n    .rkt .speed {\n        grid-column: 2/4;\n        grid-row: 2/4\n    }\n\n    .rkt .aux {\n        grid-column: 1;\n        grid-row: 2/4\n    }\n\n    .rkt .throttle {\n        grid-column: 4;\n        grid-row: 2\n    }\n\n    .rkt .current {\n        grid-column: 5;\n        grid-row: 2\n    }\n\n    .rkt .energy {\n        grid-column: 6;\n        grid-row: 2\n    }\n\n    .rkt .elevation {\n        grid-column: 4/7;\n        grid-row: 3;\n        display: block;\n        padding: 10px\n    }\n\n    .rkt .speed-number {\n        font-size: clamp(68px, 8vw, 118px);\n        font-weight: 800;\n        line-height: 1.05\n    }\n\n    .rkt .cyan {\n        color: #64d8ff\n    }\n\n    .rkt .orange {\n        color: #ffb571\n    }\n\n    .rkt .pink {\n        color: #f393cd\n    }\n\n    .rkt .green {\n        color: #60e6b1\n    }\n\n    .rkt .topline {\n        display: flex;\n        align-items: center;\n        justify-content: space-between;\n        gap: 5px\n    }\n\n    .rkt select {\n        color: #edf5ff;\n        background: #172637;\n        border: 1px solid #425970;\n        border-radius: 5px;\n        padding: 4px;\n        max-width: 160px;\n        font-size: 12px\n    }\n\n    .rkt svg {\n        display: block;\n        width: 100%;\n        height: 120px\n    }\n\n    .rkt .note {\n        font-size: 11px;\n        color: #acbdd0;\n        line-height: 1.4\n    }\n\n    .rkt .state {\n        font-size: 14px;\n        font-weight: bold;\n        margin: 8px 0\n    }\n\n    .rkt .avg {\n        font-size: 18px;\n        margin-top: 12px\n    }\n\n    .rkt .quality {\n        font-size: 11px;\n        color: #a2b2c6;\n        text-align: center;\n        margin-top: 12px\n    }\n\n    @media(max-width:700px) {\n        .rkt {\n            grid-template-columns: repeat(2, minmax(0, 1fr));\n            grid-template-rows: none;\n            grid-auto-rows: auto\n        }\n\n        .rkt .box {\n            grid-column: auto;\n            grid-row: auto;\n            min-height: 120px\n        }\n\n        .rkt .speed,\n        .rkt .elevation {\n            grid-column: 1/3\n        }\n\n        .rkt .elevation {\n            min-height: 200px\n        }\n\n        .rkt .value {\n            font-size: 24px\n        }\n    }\n\n    /* Fill naik dari bawah; angka selalu berada di atas lapisan warna. */\n    .rkt .throttle {\n        position: relative;\n        overflow: hidden;\n        isolation: isolate;\n    }\n\n    .rkt .throttle-fill {\n        position: absolute;\n        inset: 0;\n        pointer-events: none;\n        z-index: 0;\n        background: linear-gradient(to top, rgba(255, 119, 32, .65), rgba(255, 181, 113, .28));\n        transform: scaleY(0);\n        transform-origin: center bottom;\n        transition: transform 180ms ease-out;\n        will-change: transform;\n    }\n\n    .rkt .throttle-content {\n        position: relative;\n        z-index: 1;\n        display: flex;\n        flex-direction: column;\n        align-items: center;\n        justify-content: center;\n        width: 100%;\n    }\n\n    .rkt .throttle-content .label {\n        color: #e7edf5;\n    }\n\n    .rkt .throttle-content .value {\n        color: #fff;\n        text-shadow: 0 1px 4px #101a26;\n    }\n\n    @media(prefers-reduced-motion:reduce) {\n        .rkt .throttle-fill {\n            transition: none;\n        }\n    }\n</style>\n<div class=\"rkt\">\n    <div class=\"box time\">\n        <div class=\"label\">CURRENT LAP · {{msg.payload.lap || 0}}</div>\n        <div class=\"value cyan\">{{msg.payload.currentLap || '--:--.---'}}</div>\n        <hr>\n        <div class=\"label\">REMAINING LAP</div>\n        <div class=\"value\" ng-style=\"{color:msg.payload.countdownColor}\">{{msg.payload.countdown || '--:--.---'}}</div>\n    </div>\n    <div class=\"box distance\">\n        <div class=\"label\">DISTANCE · SESSION</div>\n        <div class=\"value\">{{msg.payload.distance || '0.000'}} <span class=\"small\">km</span></div>\n        <hr>\n        <div class=\"label\">GPS LOCK / SAT*</div>\n        <div class=\"small green\">{{msg.payload.sat || 0}}</div>\n    </div>\n    <div class=\"box eff\">\n        <div class=\"label\">SESSION EFFICIENCY</div>\n        <div class=\"value pink\">{{msg.payload.kmPerKwh || '—'}}</div>\n        <div class=\"small\">km/kWh</div>\n    </div>\n    <div class=\"box last\">\n        <div class=\"label\">PREVIOUS LAP</div>\n        <div class=\"value\">{{msg.payload.lastLapTime || '--:--.---'}}</div>\n        <div class=\"small\">{{msg.payload.lastLapEnergy || '0.000'}} Wh ·\n            <span class=\"pink\">{{msg.payload.lastLapKmPerKwh || '—'}} km/kWh</span></div>\n    </div>\n    <div class=\"box aux\">\n        <div class=\"label\">PADDOCK / RAKATA</div>\n        <div class=\"state green\">{{msg.payload.status || 'READY'}}</div>\n        <div class=\"note\">{{msg.payload.age > 3 ? 'MQTT STALE' : 'MQTT LIVE'}}</div>\n        <hr>\n        <div class=\"label\">VOLTAGE</div>\n        <div class=\"value\">{{msg.payload.voltage || '0.0'}} <span class=\"small\">V</span></div>\n        <hr>\n        <div class=\"label\">POWER</div>\n        <div class=\"value\">{{msg.payload.power || '0'}} <span class=\"small\">W</span></div>\n        <div class=\"quality\">{{msg.payload.quality}}</div>\n    </div>\n    <div class=\"box speed\">\n        <div class=\"label\">REAL TIME SPEED</div>\n        <div class=\"speed-number\">{{msg.payload.speed || '0.0'}}</div>\n        <div class=\"small\">km/h</div>\n        <div class=\"avg cyan\">AVG {{msg.payload.avgSpeed || '0.00'}} <span class=\"small\">km/h</span></div>\n        <div class=\"note\">Sejak START · termasuk waktu berhenti</div>\n    </div>\n    <div class=\"box throttle\" role=\"meter\" aria-label=\"Throttle\" aria-valuemin=\"0\" aria-valuemax=\"100\"\n        ng-attr-aria-valuenow=\"{{throttlePct}}\">\n        <div class=\"throttle-fill\" ng-style=\"{'transform':'scaleY(' + (throttlePct / 100) + ')'}\" aria-hidden=\"true\">\n        </div>\n        <div class=\"throttle-content\">\n            <div class=\"label\">THROTTLE</div>\n            <div class=\"value\">{{throttlePct | number:0}} <span class=\"small\">%</span></div>\n        </div>\n    </div>\n    <div class=\"box current\">\n        <div class=\"label\">CURRENT</div>\n        <div class=\"value orange\">{{msg.payload.current || '0.00'}} <span class=\"small\">A</span></div>\n    </div>\n    <div class=\"box energy\">\n        <div class=\"label\">ENERGY USED · LAP</div>\n        <div class=\"value green\">{{msg.payload.energy || '0.000'}}</div>\n        <div class=\"small\">Wh</div>\n    </div>\n    <div class=\"box elevation\">\n        <div class=\"topline\"><span class=\"label\">SPEED · km/h</span><span class=\"note\">SATU LAP · ACUAN 4:10</span>\n        </div>\n        <svg viewBox=\"0 0 660 155\" role=\"img\" aria-label=\"Grafik kecepatan terhadap waktu selama satu lap\">\n            <g ng-repeat=\"g in speedGrid\">\n                <line x1=\"42\" x2=\"642\" ng-attr-y1=\"{{g.y}}\" ng-attr-y2=\"{{g.y}}\" stroke=\"#2b3b4e\" /><text x=\"1\"\n                    ng-attr-y=\"{{g.y+4}}\" fill=\"#a9bbd0\" font-size=\"12\">{{g.label}}</text>\n            </g>\n            <path ng-attr-d=\"{{speedPath}}\" fill=\"none\" stroke=\"#64d8ff\" stroke-width=\"2.5\" stroke-linejoin=\"round\" />\n            <g ng-repeat=\"x in speedTicks\"><text ng-attr-x=\"{{x.x}}\" y=\"149\" text-anchor=\"middle\" fill=\"#a9bbd0\"\n                    font-size=\"12\">{{x.label}}</text></g>\n            <circle ng-if=\"speedPoint\" ng-attr-cx=\"{{speedPoint.x}}\" ng-attr-cy=\"{{speedPoint.y}}\" r=\"4\" fill=\"#64d8ff\"\n                stroke=\"#fff\" stroke-width=\"1.5\" />\n        </svg>\n        <div class=\"note\">{{chartNote}}</div>\n    </div>\n</div>\n<script>\n    (function(scope){\n  let samples=[], lastLap=null, wasRunning=false, lastTime=-1, lastDraw=-1;\n  scope.throttlePct=0; scope.speedPath=''; scope.speedPoint=null;\n  scope.chartNote='Tekan START untuk merekam grafik satu lap';\n  function seconds(text){\n    const a=String(text||'').split(':');\n    return a.length===2 && Number.isFinite(Number(a[0])) && Number.isFinite(Number(a[1])) ? Number(a[0])*60+Number(a[1]):0;\n  }\n  function render(elapsed){\n    const xmax=Math.max(250,Math.ceil(elapsed/50)*50);\n    const ymax=Math.max(40,Math.ceil(samples.reduce((m,p)=>Math.max(m,p.v),0)/10)*10);\n    const x=t=>42+Math.max(0,Math.min(xmax,t))/xmax*600;\n    const y=v=>125-v/ymax*110;\n    scope.speedGrid=[0,1,2,3,4].map(i=>({y:y(ymax*i/4),label:(ymax*i/4).toFixed(0)}));\n    scope.speedTicks=[0,1,2,3,4,5].map(i=>{const s=Math.round(xmax*i/5);return {x:x(s),label:Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};});\n    scope.speedPath=samples.map((p,i)=>(!i||p.t-samples[i-1].t>2?'M':'L')+x(p.t).toFixed(2)+','+y(p.v).toFixed(2)).join(' ');\n    const p=samples[samples.length-1];scope.speedPoint=p?{x:x(p.t),y:y(p.v)}:null;\n  }\n  scope.$watch('msg',function(m){\n    if(!m||!m.payload)return;\n    const p=m.payload,th=Number(p.throttle);\n    scope.throttlePct=Number.isFinite(th)?Math.max(0,Math.min(100,th)):0;\n    const running=!!p.running,elapsed=seconds(p.currentLap),lap=Number(p.lap)||0;\n    if(lap!==lastLap || (running&&!wasRunning) || p.status==='READY'){\n      samples=[];lastTime=-1;lastDraw=-1;scope.speedPoint=null;\n    }\n    lastLap=lap;wasRunning=running;\n    const age=Number(p.age),v=Number(p.speed);\n    // Age removes repeated UI-clock messages from the sample timeline.\n    const t=Math.max(0,elapsed-age);\n    if(running&&Number.isFinite(age)&&age>=0&&age<=2&&Number.isFinite(v)&&v>=0&&t>lastTime+0.15){\n      samples.push({t:t,v:v});lastTime=t;\n    }\n    if(elapsed-lastDraw>=0.15||lastDraw<0||!running){render(elapsed);lastDraw=elapsed;}\n    if(!running)scope.chartNote=lap?'Grafik lap terakhir · sesi berhenti':'Tekan START untuk merekam grafik satu lap';\n    else scope.chartNote='Lap '+lap+' · '+(age>2?'Data terputus — menunggu MQTT':'Kecepatan terhadap waktu sejak awal lap');\n  });\n  render(0);\n})(scope);\n</script>",
+        "storeOutMessages": false,
+        "fwdInMessages": false,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 560,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "446fc8a8d5bc6590",
+        "type": "ui_worldmap",
+        "z": "09e2c3412457823e",
+        "group": "69f66715fbd1f5e6",
+        "order": 2,
+        "width": 4,
+        "height": 4,
+        "name": "",
+        "lat": "",
+        "lon": "",
+        "zoom": "15",
+        "layer": "OSMC",
+        "cluster": "",
+        "maxage": "",
+        "usermenu": "hide",
+        "layers": "hide",
+        "panit": "true",
+        "panlock": "false",
+        "zoomlock": "false",
+        "hiderightclick": "true",
+        "coords": "none",
+        "showgrid": "false",
+        "showruler": "false",
+        "allowFileDrop": "false",
+        "path": "/worldmap",
+        "overlist": "DR,CO,RA,DN,HM",
+        "maplist": "OSMG,OSMC,EsriC,EsriS,EsriT,EsriDG,UKOS",
+        "mapname": "",
+        "mapurl": "",
+        "mapopt": "",
+        "mapwms": false,
+        "x": 680,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "d6fb7bc66421279e",
+        "type": "ui_button",
+        "z": "09e2c3412457823e",
+        "name": "RECORD_LAP",
+        "group": "69f66715fbd1f5e6",
+        "order": 4,
+        "width": 4,
+        "height": 2,
+        "passthru": false,
+        "label": "lap",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#00cc00",
+        "className": "",
+        "icon": "",
+        "payload": "RECORD_LAP",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 140,
+        "y": 240,
+        "wires": [
+            [
+                "8327395572f25e20"
+            ]
+        ]
+    },
+    {
+        "id": "5bcbb83c22d72022",
+        "type": "ui_button",
+        "z": "09e2c3412457823e",
+        "name": "RESET",
+        "group": "69f66715fbd1f5e6",
+        "order": 5,
+        "width": 4,
+        "height": 2,
+        "passthru": false,
+        "label": "RESET",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#cc0000",
+        "className": "",
+        "icon": "",
+        "payload": "RESET_ALL",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 220,
+        "y": 80,
+        "wires": [
+            [
+                "8327395572f25e20"
+            ]
+        ]
+    },
+    {
+        "id": "423f49fa070cea38",
+        "type": "file",
+        "z": "09e2c3412457823e",
+        "name": "data_telem",
+        "filename": "./telemetry_logs/csv_raw/data_telemetri_td14.csv",
+        "filenameType": "str",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "none",
+        "x": 690,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "53875c4979446044",
+        "type": "mqtt in",
+        "z": "09e2c3412457823e",
+        "name": "Lap Result",
+        "topic": "rakata/lap_result",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "62c6b851023bc3c1",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 80,
+        "y": 120,
+        "wires": [
+            [
+                "8327395572f25e20"
+            ]
+        ]
+    },
+    {
+        "id": "c1a5f5b456dc18ac",
+        "type": "mqtt out",
+        "z": "09e2c3412457823e",
+        "name": "control",
+        "topic": "control",
+        "qos": "0",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "62c6b851023bc3c1",
+        "x": 670,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "a95504d3161d7db1",
+        "type": "mqtt in",
+        "z": "09e2c3412457823e",
+        "name": "",
+        "topic": "Paddock",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "62c6b851023bc3c1",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 120,
+        "y": 180,
+        "wires": [
+            [
+                "8327395572f25e20"
+            ]
+        ]
+    },
+    {
+        "id": "bb05ddd23b10d93d",
+        "type": "ui_button",
+        "z": "09e2c3412457823e",
+        "name": "START",
+        "group": "69f66715fbd1f5e6",
+        "order": 3,
+        "width": 4,
+        "height": 2,
+        "passthru": false,
+        "label": "START",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#005DFF",
+        "className": "",
+        "icon": "",
+        "payload": "START_SESSION",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 160,
+        "y": 300,
+        "wires": [
+            [
+                "8327395572f25e20"
+            ]
+        ]
+    },
+    {
+        "id": "8d4e75842717bfe6",
+        "type": "inject",
+        "z": "09e2c3412457823e",
+        "name": "UI clock (no logging / MQTT publish)",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "0.25",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.2,
+        "topic": "paddock/tick",
+        "payload": "",
+        "payloadType": "str",
+        "x": 180,
+        "y": 420,
+        "wires": [
+            [
+                "8327395572f25e20"
+            ]
+        ]
+    },
+    {
+        "id": "69f66715fbd1f5e6",
+        "type": "ui_group",
+        "name": "Urban",
+        "tab": "66928ae49d0be5d3",
+        "order": 1,
+        "disp": false,
+        "width": 22,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "62c6b851023bc3c1",
+        "type": "mqtt-broker",
+        "name": "buatTD02",
+        "broker": "<YOUR_HIVEMQ_CLUSTER_URL>.s1.eu.hivemq.cloud",
+        "port": "8883",
+        "tls": "9dac2f33980d8f8f",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "66928ae49d0be5d3",
+        "type": "ui_tab",
+        "name": "Paddock",
+        "icon": "dashboard",
+        "order": 2,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "9dac2f33980d8f8f",
+        "type": "tls-config",
+        "name": "",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "",
+        "servername": "<YOUR_HIVEMQ_CLUSTER_URL>.s1.eu.hivemq.cloud",
+        "verifyservercert": true,
+        "alpnprotocol": ""
+    },
+    {
+        "id": "65a0fe1e3b704250",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6",
+            "node-red-contrib-web-worldmap": "5.8.1"
+        }
+    }
+]

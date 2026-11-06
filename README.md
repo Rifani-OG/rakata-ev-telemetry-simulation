@@ -1,4 +1,4 @@
-# RAKATA URBAN — KMHE 2026 Telemetry & Simulation Hub
+# RAKATA URBAN — Telemetry & Simulation Hub
 
 Computational engineering pipeline, high-frequency telemetry analytics, and driver-in-the-loop simulation suite for the **RAKATA Urban Concept Electric Vehicle** at **Kontes Mobil Hemat Energi (KMHE) 2026** (Institut Teknologi Bandung).
 
